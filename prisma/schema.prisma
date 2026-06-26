@@ -1,0 +1,228 @@
+// EdgeAI — Prisma schema
+// Install: npm install prisma @prisma/client
+// Setup:   npx prisma generate && npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  preferences   UserPreference?
+  notifications Notification[]
+
+  @@index([email])
+}
+
+model UserPreference {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  favoriteTeams        String[]
+  favoriteSports       String[]
+  notificationsEnabled Boolean  @default(true)
+  emailDigest          Boolean  @default(false)
+  theme                String   @default("dark")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Games ─────────────────────────────────────────────────────────────────────
+
+model Game {
+  id           String   @id
+  sport        String
+  league       String
+  homeTeamId   String
+  awayTeamId   String
+  homeTeamName String
+  awayTeamName String
+  scheduledAt  DateTime
+  venue        String
+  venueId      String
+  status       String   @default("scheduled")
+  period       Int?
+  clock        String?
+  homeScore    Int?
+  awayScore    Int?
+  weatherData  Json?
+  oddsData     Json?
+  h2hData      Json?
+  sourceId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  predictions Prediction[]
+  outcome     GameOutcome?
+
+  @@index([scheduledAt])
+  @@index([sport, status])
+  @@index([sourceId])
+}
+
+// ── Predictions ───────────────────────────────────────────────────────────────
+
+model Prediction {
+  id                 String   @id @default(cuid())
+  gameId             String
+  modelVersion       String
+  winner             String
+  winProbability     Float
+  confidence         Int
+  predictedHomeScore Int
+  predictedAwayScore Int
+  expectedMargin     Int
+  upsetProbability   Float
+  factors            Json
+  featureValues      Json?
+  createdAt          DateTime @default(now())
+
+  game             Game              @relation(fields: [gameId], references: [id])
+  validationResult ValidationResult?
+
+  @@index([gameId])
+  @@index([createdAt])
+  @@index([modelVersion])
+}
+
+model GameOutcome {
+  id              String   @id @default(cuid())
+  gameId          String   @unique
+  actualWinner    String
+  actualHomeScore Int
+  actualAwayScore Int
+  finalStatus     String   @default("final")
+  recordedAt      DateTime @default(now())
+
+  game             Game              @relation(fields: [gameId], references: [id])
+  validationResult ValidationResult?
+}
+
+// ── Accuracy & Validation ─────────────────────────────────────────────────────
+
+model ValidationResult {
+  id             String   @id @default(cuid())
+  predictionId   String   @unique
+  gameId         String
+  sport          String
+  correct        Boolean
+  rawProbability Float
+  actualOutcome  Int      // 1 = predicted winner won, 0 = upset
+  brierScore     Float    // (p - o)^2
+  logLoss        Float    // -[o·log(p) + (1-o)·log(1-p)]
+  marginError    Float    // |predicted_margin - actual_margin|
+  validatedAt    DateTime @default(now())
+
+  prediction Prediction @relation(fields: [predictionId], references: [id])
+
+  @@index([sport])
+  @@index([validatedAt])
+  @@index([gameId])
+}
+
+model CalibrationRecord {
+  id             String   @id @default(cuid())
+  modelVersion   String
+  rawProbability Float
+  outcome        Int      // 0 or 1
+  sport          String
+  gameId         String
+  recordedAt     DateTime @default(now())
+
+  @@index([modelVersion])
+  @@index([sport])
+}
+
+model ModelVersion {
+  id             String    @id @default(cuid())
+  name           String    @unique
+  description    String
+  isActive       Boolean   @default(false)
+  accuracy       Float     @default(0)
+  brierScore     Float     @default(0)
+  logLoss        Float     @default(0)
+  gamesValidated Int       @default(0)
+  createdAt      DateTime  @default(now())
+  activatedAt    DateTime?
+}
+
+model AccuracySnapshot {
+  id                 String   @id @default(cuid())
+  computedAt         DateTime @default(now())
+  periodStart        DateTime
+  periodEnd          DateTime
+  sport              String?  // null = all sports
+  league             String?
+  totalGames         Int
+  correctPredictions Int
+  accuracy           Float
+  brierScore         Float
+  logLoss            Float
+  calibrationData    Json     // [{bucket, predicted, actual, count}]
+
+  @@index([computedAt])
+  @@index([sport])
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+// ── Audit & Operations ────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model SyncJob {
+  id          String    @id @default(cuid())
+  type        String    // games | odds | injuries | predictions | validate
+  sport       String?
+  status      String    @default("pending")
+  result      Json?
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([type, status])
+  @@index([createdAt])
+}
