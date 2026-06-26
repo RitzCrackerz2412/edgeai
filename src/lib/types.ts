@@ -20,7 +20,7 @@ export interface Team {
   momentum: number;
   homeRecord: string;
   awayRecord: string;
-  last5: ('W' | 'L')[];
+  last5: ('W' | 'L' | 'D')[];
   injuries: Injury[];
   color: string;
 }
@@ -109,6 +109,78 @@ export interface PredictionRecord {
   correct: boolean | null;
   margin: number | null;
   date: string;
+}
+
+// ── v3.0 League / Tournament types ──────────────────────────────────────────
+
+export interface LeagueStanding {
+  teamId: string;
+  teamName: string;
+  abbreviation: string;
+  color: string;
+  rank: number;
+  gp: number;
+  w: number;
+  d: number;
+  l: number;
+  pts: number;
+  gf: number;
+  ga: number;
+  gd: number;
+  winPct: number;
+  last5: ('W' | 'L' | 'D')[];
+  streak: string;
+}
+
+export interface LeagueFixture {
+  home: string; homeAbbr: string; homeColor: string;
+  away: string; awayAbbr: string; awayColor: string;
+  homeScore?: number; awayScore?: number;
+  date: string; status: 'Upcoming' | 'Final';
+}
+
+export interface LeagueData {
+  id: string;
+  name: string;
+  shortName: string;
+  sport: Sport;
+  country: string;
+  season: string;
+  tier: 'major' | 'minor' | 'college' | 'international';
+  standings: LeagueStanding[];
+  fixtures: LeagueFixture[];
+}
+
+export interface TournamentGroup {
+  label: string;
+  teams: LeagueStanding[];
+}
+
+export interface TournamentMatch {
+  round: string;
+  homeTeam: string; homeAbbr: string; homeColor: string;
+  awayTeam: string; awayAbbr: string; awayColor: string;
+  homeScore?: number; awayScore?: number;
+  date: string; status: 'Upcoming' | 'Final';
+  venue?: string;
+}
+
+export interface Tournament {
+  id: string;
+  name: string;
+  shortName: string;
+  sport: Sport;
+  country: string;
+  season: string;
+  startDate: string;
+  endDate: string;
+  status: 'Upcoming' | 'Active' | 'Completed';
+  format: string;
+  teamCount: number;
+  groups?: TournamentGroup[];
+  knockoutMatches?: TournamentMatch[];
+  champion?: string;
+  topScorer?: { name: string; team: string; value: number; stat: string };
 }
 
 export interface AccuracyStats {

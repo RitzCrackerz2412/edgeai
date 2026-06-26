@@ -23,26 +23,27 @@ export function zScore(x: number, mean: number, std: number): number {
 
 /** Convert a W/L sequence to a momentum score in [0, 1].
  *  Recent wins are weighted more strongly (geometric decay). */
-export function momentumFromSequence(results: ('W' | 'L')[], decayRate = 0.8): number {
+export function momentumFromSequence(results: ('W' | 'L' | 'D')[], decayRate = 0.8): number {
   if (results.length === 0) return 0.5;
   let score = 0;
   let totalWeight = 0;
   for (let i = 0; i < results.length; i++) {
-    // Most-recent result is index 0
+    // Most-recent result is index 0; draws count as 0.5
     const weight = Math.pow(decayRate, i);
-    score += (results[i] === 'W' ? 1 : 0) * weight;
+    score += (results[i] === 'W' ? 1 : results[i] === 'D' ? 0.5 : 0) * weight;
     totalWeight += weight;
   }
   return score / totalWeight;
 }
 
 /** Signed streak: +5 for W5, -3 for L3, in [-1, +1] when divided by maxStreak */
-export function streakValue(results: ('W' | 'L')[], maxStreak = 10): number {
+export function streakValue(results: ('W' | 'L' | 'D')[], maxStreak = 10): number {
   if (results.length === 0) return 0;
   let streak = 0;
-  const dir = results[0] === 'W' ? 1 : -1;
+  const first = results[0];
+  const dir = first === 'W' ? 1 : first === 'D' ? 0 : -1;
   for (const r of results) {
-    if ((r === 'W' && dir === 1) || (r === 'L' && dir === -1)) streak++;
+    if (r === first) streak++;
     else break;
   }
   return clamp((dir * streak) / maxStreak, -1, 1);

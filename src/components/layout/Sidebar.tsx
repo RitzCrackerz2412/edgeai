@@ -6,6 +6,7 @@ import {
   LayoutGrid, Shield, User, BarChart2, Search,
   Settings, ChevronLeft, ChevronRight, X, Zap, History, SlidersHorizontal,
   Activity, BrainCircuit, GitCompare, Trophy, Dumbbell, Newspaper,
+  Globe, ListVideo, Swords, CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,13 @@ const V2_NAV = [
   { href: '/compare/players', label: 'Compare Players', Icon: Zap },
   { href: '/draft',           label: 'Draft',           Icon: Trophy },
   { href: '/fantasy',         label: 'Fantasy',         Icon: Dumbbell },
+];
+
+const V3_NAV = [
+  { href: '/games',           label: 'Games',           Icon: CalendarDays },
+  { href: '/matchup',         label: 'Matchup',         Icon: Swords },
+  { href: '/league/epl',      label: 'Leagues',         Icon: Globe },
+  { href: '/tournament/worldcup2026', label: 'Tournaments', Icon: ListVideo },
 ];
 
 const BOTTOM_NAV = [
@@ -128,6 +136,23 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
           )}
           {collapsed && <div className="my-2 border-t" style={{ borderColor: 'var(--border-subtle)' }} />}
           {V2_NAV.map((item) => (
+            <NavItem
+              key={item.href}
+              {...item}
+              isActive={active(item.href)}
+              collapsed={collapsed}
+              onClick={onClose}
+            />
+          ))}
+
+          {/* V3 section */}
+          {!collapsed && (
+            <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+              Global Sports
+            </p>
+          )}
+          {collapsed && <div className="my-2 border-t" style={{ borderColor: 'var(--border-subtle)' }} />}
+          {V3_NAV.map((item) => (
             <NavItem
               key={item.href}
               {...item}

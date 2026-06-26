@@ -15,10 +15,13 @@
  *   3. Set REDIS_URL in .env.local for distributed caching (optional)
  */
 
-import { Game, Sport, AccuracyStats, PredictionRecord } from './types';
+import { Game, Sport, AccuracyStats, PredictionRecord, LeagueData, Tournament, type Team } from './types';
 import { MOCK_GAMES, ACCURACY_STATS, PREDICTION_HISTORY } from './mockData';
 import { TEAM_DETAILS, TEAM_LIST, type TeamDetail } from './teamData';
 import { PLAYER_DETAILS, PLAYER_LIST, type PlayerDetail } from './playerData';
+import { ALL_TEAMS, TEAM_MAP } from './data/teams/index';
+import { LEAGUES, ALL_LEAGUES } from './data/leagues';
+import { TOURNAMENTS, ALL_TOURNAMENTS } from './data/tournaments';
 
 // Engine imports (tree-shaken in production if ENGINE_ENABLED is false)
 import type { EnginePrediction } from './engine';
@@ -99,7 +102,52 @@ export async function searchAll(query: string) {
     players: PLAYER_LIST.filter(p =>
       p.name.toLowerCase().includes(q) || p.teamName.toLowerCase().includes(q)
     ),
+    allTeams: ALL_TEAMS.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.sport.toLowerCase().includes(q) ||
+      t.league.toLowerCase().includes(q) ||
+      t.abbreviation.toLowerCase().includes(q)
+    ),
+    leagues: ALL_LEAGUES.filter(l =>
+      l.name.toLowerCase().includes(q) ||
+      l.shortName.toLowerCase().includes(q) ||
+      l.country.toLowerCase().includes(q)
+    ),
+    tournaments: ALL_TOURNAMENTS.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.shortName.toLowerCase().includes(q)
+    ),
   };
+}
+
+// ── v3.0 — Leagues ───────────────────────────────────────────────────────────
+export async function getLeagues(): Promise<LeagueData[]> {
+  return ALL_LEAGUES;
+}
+
+export async function getLeagueById(id: string): Promise<LeagueData | null> {
+  return LEAGUES[id] ?? null;
+}
+
+// ── v3.0 — Tournaments ───────────────────────────────────────────────────────
+export async function getTournaments(): Promise<Tournament[]> {
+  return ALL_TOURNAMENTS;
+}
+
+export async function getTournamentById(id: string): Promise<Tournament | null> {
+  return TOURNAMENTS[id] ?? null;
+}
+
+// ── v3.0 — All teams (500+ across all leagues) ───────────────────────────────
+export async function getAllTeams(filters?: { sport?: Sport; league?: string }): Promise<Team[]> {
+  let teams = ALL_TEAMS;
+  if (filters?.sport) teams = teams.filter(t => t.sport === filters.sport);
+  if (filters?.league) teams = teams.filter(t => t.league.toLowerCase().includes(filters.league!.toLowerCase()));
+  return teams;
+}
+
+export async function getTeamV3(id: string): Promise<Team | null> {
+  return TEAM_MAP[id] ?? null;
 }
 
 // ── Prediction engine ────────────────────────────────────────────────────────
