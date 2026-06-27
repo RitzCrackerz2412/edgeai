@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { SPORT_CONFIGS, formatStat } from '@/lib/sports/config';
 import type { SportConfig } from '@/lib/sports/config';
-import { formatStat } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 import type { Team } from '@/lib/types';
 
@@ -74,7 +74,8 @@ function TeamCard({ team, config, rank }: { team: Team; config: SportConfig; ran
   );
 }
 
-export default function SportTeams({ config }: { config: SportConfig }) {
+export default function SportTeams({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const allTeams = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('eloRating');

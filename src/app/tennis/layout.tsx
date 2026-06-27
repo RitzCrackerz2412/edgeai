@@ -1,6 +1,5 @@
-import { SPORT_CONFIGS } from '@/lib/sports/config';
 import SportLayout from '@/components/sport-pages/SportLayout';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <SportLayout config={SPORT_CONFIGS.tennis}>{children}</SportLayout>;
+  return <SportLayout sportId="tennis">{children}</SportLayout>;
 }

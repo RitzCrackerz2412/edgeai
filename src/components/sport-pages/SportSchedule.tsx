@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { SPORT_CONFIGS } from '@/lib/sports/config';
 import type { SportConfig } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 
@@ -43,7 +44,8 @@ function generateSchedule(teams: ReturnType<typeof getTeamsBySport>, config: Spo
   return rows;
 }
 
-export default function SportSchedule({ config }: { config: SportConfig }) {
+export default function SportSchedule({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const teams = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
   const schedule = useMemo(() => generateSchedule(teams, config), [teams, config]);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'final'>('all');

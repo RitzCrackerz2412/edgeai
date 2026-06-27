@@ -2,11 +2,11 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import type { SportConfig } from '@/lib/sports/config';
-import { formatStat } from '@/lib/sports/config';
+import { SPORT_CONFIGS, formatStat } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 
-export default function SportPowerRankings({ config }: { config: SportConfig }) {
+export default function SportPowerRankings({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const teams = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
   const ranked = useMemo(
     () => [...teams].sort((a, b) => b.eloRating - a.eloRating),

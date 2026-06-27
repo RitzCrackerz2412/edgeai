@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { SportConfig } from '@/lib/sports/config';
+import { SPORT_CONFIGS } from '@/lib/sports/config';
 
 export default function SportLayout({
-  config,
+  sportId,
   children,
 }: {
-  config: SportConfig;
+  sportId: string;
   children: React.ReactNode;
 }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const pathname = usePathname();
   const base = `/${config.slug}`;
 

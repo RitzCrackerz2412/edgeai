@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import type { SportConfig } from '@/lib/sports/config';
-import { formatStat } from '@/lib/sports/config';
+import { SPORT_CONFIGS, formatStat } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 import { PLAYER_DETAILS } from '@/lib/playerData';
 
@@ -19,7 +18,8 @@ function WinBar({ prob, color }: { prob: number; color: string }) {
   );
 }
 
-export default function SportHome({ config }: { config: SportConfig }) {
+export default function SportHome({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const teams = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
   const players = useMemo(
     () => Object.values(PLAYER_DETAILS).filter(p => p.sport === config.sport),

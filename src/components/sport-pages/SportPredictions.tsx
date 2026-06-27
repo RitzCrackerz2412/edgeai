@@ -2,10 +2,11 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import type { SportConfig } from '@/lib/sports/config';
+import { SPORT_CONFIGS } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 
-export default function SportPredictions({ config }: { config: SportConfig }) {
+export default function SportPredictions({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const teams = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
 
   const matchups = useMemo(() => {

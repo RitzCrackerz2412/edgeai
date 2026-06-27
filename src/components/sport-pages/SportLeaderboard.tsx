@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { SportConfig } from '@/lib/sports/config';
+import { SPORT_CONFIGS } from '@/lib/sports/config';
 import { PLAYER_DETAILS } from '@/lib/playerData';
 
-export default function SportLeaderboard({ config }: { config: SportConfig }) {
+export default function SportLeaderboard({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const players = useMemo(
     () => Object.values(PLAYER_DETAILS).filter(p => p.sport === config.sport),
     [config.sport],

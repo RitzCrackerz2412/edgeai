@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { SPORT_CONFIGS, formatStat } from '@/lib/sports/config';
 import type { SportConfig } from '@/lib/sports/config';
-import { formatStat } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 import type { Team } from '@/lib/types';
 
@@ -102,7 +102,8 @@ function WinProbBar({ homeProb, drawProb, homeColor, awayColor, homeName, awayNa
   );
 }
 
-export default function SportMatchup({ config }: { config: SportConfig }) {
+export default function SportMatchup({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const teams = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
   const [homeId, setHomeId] = useState('');
   const [awayId, setAwayId] = useState('');

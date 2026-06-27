@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { SportConfig } from '@/lib/sports/config';
-import { formatStat } from '@/lib/sports/config';
+import { SPORT_CONFIGS, formatStat } from '@/lib/sports/config';
 import { getTeamsBySport } from '@/lib/data/teams';
 
-export default function SportStandings({ config }: { config: SportConfig }) {
+export default function SportStandings({ sportId }: { sportId: string }) {
+  const config = SPORT_CONFIGS[sportId as keyof typeof SPORT_CONFIGS];
   const all = useMemo(() => getTeamsBySport(config.sport), [config.sport]);
   const leagues = useMemo(() => ['All', ...new Set(all.map(t => t.league))], [all]);
   const [leagueFilter, setLeagueFilter] = useState('All');
