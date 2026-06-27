@@ -60,7 +60,7 @@ function TeamSelect({ value, onChange, exclude, sportFilter, id }: {
       value={value}
       onChange={e => onChange(e.target.value)}
       className="w-full rounded-lg px-3 py-2 text-sm cursor-pointer outline-none"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)' }}
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
     >
       <option value="">— Select team / player —</option>
       {Object.entries(byLeague).map(([league, teams]) => (
@@ -100,7 +100,7 @@ function StatRow({ label, homeVal, awayVal, higherBetter = true }: {
   const homeWins = higherBetter ? homeVal > awayVal : homeVal < awayVal;
   const tied = homeVal === awayVal;
   return (
-    <tr style={{ borderBottom: '1px solid var(--border-muted)' }}>
+    <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
       <td className="py-2 pr-3 text-right">
         <span className={`text-sm font-mono ${homeWins && !tied ? 'font-bold' : ''}`}
           style={{ color: homeWins && !tied ? '#10b981' : 'var(--text-secondary)' }}>
@@ -133,8 +133,8 @@ function genComparison(a: Team, b: Team): string {
 
 export default function CompareTeamsPage() {
   const [sportFilter, setSportFilter] = useState('All');
-  const [homeId, setHomeId] = useState('kc-chiefs');
-  const [awayId, setAwayId] = useState('buf-bills');
+  const [homeId, setHomeId] = useState('');
+  const [awayId, setAwayId] = useState('');
 
   const home = TEAM_MAP[homeId] as Team | undefined;
   const away = TEAM_MAP[awayId] as Team | undefined;
@@ -185,17 +185,21 @@ export default function CompareTeamsPage() {
 
       {/* Sport filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {SPORTS.map(s => (
-          <button key={s} onClick={() => { setSportFilter(s); setHomeId(''); setAwayId(''); }}
-            className="px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer"
-            style={{
-              background: sportFilter === s ? 'var(--accent)' : 'var(--bg-card)',
-              color: sportFilter === s ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid var(--border-muted)',
-            }}>
-            {s}
-          </button>
-        ))}
+        {SPORTS.map(s => {
+          const count = s === 'All' ? ALL_TEAMS.length : ALL_TEAMS.filter(t => t.sport === s).length;
+          return (
+            <button key={s} onClick={() => setSportFilter(s)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+              style={{
+                background: sportFilter === s ? 'var(--accent)' : 'var(--bg-card)',
+                color: sportFilter === s ? '#fff' : 'var(--text-secondary)',
+                border: `1px solid ${sportFilter === s ? 'var(--accent)' : 'var(--border-default)'}`,
+              }}>
+              {s}
+              <span className="text-[10px] opacity-70">{count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Selectors */}
@@ -210,11 +214,23 @@ export default function CompareTeamsPage() {
         </div>
       </div>
 
+      {/* Empty state */}
+      {(!home || !away) && (
+        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+          <p className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            Select two teams to compare
+          </p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {ALL_TEAMS.length}+ teams and athletes across {SPORTS.length - 1} sports — filter by sport above, then pick two
+          </p>
+        </div>
+      )}
+
       {home && away && (
         <>
           {/* Header */}
           <div className="flex items-center justify-between flex-wrap gap-4 p-5 rounded-2xl"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
             <div className="text-center flex-1">
               <div className="w-10 h-10 rounded-full mx-auto mb-2" style={{ background: home.color }} />
               <p className="font-bold text-lg">{home.name}</p>
@@ -226,7 +242,7 @@ export default function CompareTeamsPage() {
               {homeId !== awayId && (
                 <Link href={`/?predict=true&home=${homeId}&away=${awayId}`}
                   className="mt-2 block text-xs px-3 py-1 rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
-                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border-muted)' }}>
+                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)' }}>
                   Predict →
                 </Link>
               )}
@@ -242,11 +258,11 @@ export default function CompareTeamsPage() {
           {/* Charts row */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* Radar */}
-            <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+            <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
               <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Attribute Radar</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="var(--border-muted)" />
+                  <PolarGrid stroke="var(--border-default)" />
                   <PolarAngleAxis dataKey="axis" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
                   <Radar name={home.abbreviation} dataKey="home" stroke={home.color} fill={home.color} fillOpacity={0.18} />
                   <Radar name={away.abbreviation} dataKey="away" stroke={away.color} fill={away.color} fillOpacity={0.18} />
@@ -256,13 +272,13 @@ export default function CompareTeamsPage() {
             </div>
 
             {/* Bar chart */}
-            <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+            <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
               <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Key Metrics</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={eloData} layout="vertical" barSize={14} barGap={4}>
                   <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} width={60} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)', borderRadius: 8 }} />
+                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 8 }} />
                   <Bar dataKey={home.abbreviation} fill={home.color} radius={[0, 4, 4, 0]} />
                   <Bar dataKey={away.abbreviation} fill={away.color} radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -272,7 +288,7 @@ export default function CompareTeamsPage() {
 
           {/* Head-to-head bar */}
           {h2h && (
-            <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+            <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
               <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Head-to-Head History</h3>
               <div className="grid sm:grid-cols-2 gap-6">
                 <WinBar label="All-Time" homeVal={h2h.home} awayVal={h2h.away} homeColor={home.color} awayColor={away.color} />
@@ -281,7 +297,7 @@ export default function CompareTeamsPage() {
           )}
 
           {/* Stats table */}
-          <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
             <div className="flex items-center mb-4">
               <p className="text-sm font-bold flex-1 text-right pr-8" style={{ color: home.color }}>{home.abbreviation}</p>
               <p className="text-xs font-semibold uppercase tracking-widest w-28 text-center" style={{ color: 'var(--text-muted)' }}>Stat</p>
@@ -303,7 +319,7 @@ export default function CompareTeamsPage() {
           {/* Form + records */}
           <div className="grid sm:grid-cols-2 gap-4">
             {[{ team: home, color: home.color }, { team: away, color: away.color }].map(({ team, color }) => (
-              <div key={team.id} className="rounded-xl p-4 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+              <div key={team.id} className="rounded-xl p-4 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <p className="text-sm font-semibold" style={{ color }}>{team.name}</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   {[
@@ -320,7 +336,7 @@ export default function CompareTeamsPage() {
                 <div className="flex gap-1">
                   {team.last5.map((r, i) => (
                     <span key={i} className="flex-1 text-center text-xs py-1 rounded"
-                      style={{ background: r === 'W' ? `${color}22` : 'var(--bg-base)', color: r === 'W' ? color : 'var(--text-muted)', border: `1px solid ${r === 'W' ? color + '44' : 'var(--border-muted)'}` }}>
+                      style={{ background: r === 'W' ? `${color}22` : 'var(--bg-base)', color: r === 'W' ? color : 'var(--text-muted)', border: `1px solid ${r === 'W' ? color + '44' : 'var(--border-default)'}` }}>
                       {r}
                     </span>
                   ))}

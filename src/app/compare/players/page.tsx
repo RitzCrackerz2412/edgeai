@@ -10,7 +10,12 @@ import {
 } from 'recharts';
 
 const ALL_PLAYERS = Object.values(PLAYER_DETAILS);
-const PLAYER_SPORTS = ['All', ...Array.from(new Set(ALL_PLAYERS.map(p => p.sport))).sort()];
+const SPORT_LIST = Array.from(new Set(ALL_PLAYERS.map(p => p.sport))).sort();
+const PLAYER_SPORTS = ['All', ...SPORT_LIST];
+const SPORT_COUNTS: Record<string, number> = PLAYER_SPORTS.reduce((acc, s) => {
+  acc[s] = s === 'All' ? ALL_PLAYERS.length : ALL_PLAYERS.filter(p => p.sport === s).length;
+  return acc;
+}, {} as Record<string, number>);
 
 function PlayerSelect({ value, onChange, exclude, sportFilter, id }: {
   value: string; onChange: (v: string) => void; exclude: string; sportFilter: string; id?: string;
@@ -30,11 +35,11 @@ function PlayerSelect({ value, onChange, exclude, sportFilter, id }: {
       value={value}
       onChange={e => onChange(e.target.value)}
       className="w-full rounded-lg px-3 py-2 text-sm cursor-pointer outline-none"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)' }}
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
     >
       <option value="">— Select player —</option>
       {Object.entries(grouped).map(([sport, players]) => (
-        <optgroup key={sport} label={sport}>
+        <optgroup key={sport} label={`${sport} (${players.length})`}>
           {players.map(p => (
             <option key={p.id} value={p.id}>{p.name} · {p.position} · {p.teamName}</option>
           ))}
@@ -54,7 +59,7 @@ function StatCompareRow({ label, aVal, bVal, aColor, bColor, higherBetter = true
   const bWins = !isNaN(aNum) && !isNaN(bNum) && (higherBetter ? bNum > aNum : bNum < aNum);
 
   return (
-    <tr style={{ borderBottom: '1px solid var(--border-muted)' }}>
+    <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
       <td className="py-2 pr-4 text-right">
         <span className="text-sm font-mono" style={{ color: aWins ? aColor : 'var(--text-secondary)', fontWeight: aWins ? 700 : 400 }}>
           {typeof aVal === 'number' ? aVal.toFixed(1) : aVal}
@@ -85,8 +90,8 @@ function genPlayerComparison(a: PlayerDetail, b: PlayerDetail): string {
 
 export default function ComparePlayersPage() {
   const [sportFilter, setSportFilter] = useState('All');
-  const [aId, setAId] = useState('pm-15');  // Mahomes
-  const [bId, setBId] = useState(ALL_PLAYERS.find(p => p.id !== 'pm-15')?.id ?? '');
+  const [aId, setAId] = useState('');
+  const [bId, setBId] = useState('');
 
   const playerA = aId ? PLAYER_DETAILS[aId] : null;
   const playerB = bId ? PLAYER_DETAILS[bId] : null;
@@ -143,14 +148,15 @@ export default function ComparePlayersPage() {
       {/* Sport filter tabs */}
       <div className="flex flex-wrap gap-2">
         {PLAYER_SPORTS.map(s => (
-          <button key={s} onClick={() => { setSportFilter(s); setAId(''); setBId(''); }}
-            className="px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer"
+          <button key={s} onClick={() => setSportFilter(s)}
+            className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
             style={{
               background: sportFilter === s ? 'var(--accent)' : 'var(--bg-card)',
               color: sportFilter === s ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid var(--border-muted)',
+              border: `1px solid ${sportFilter === s ? 'var(--accent)' : 'var(--border-default)'}`,
             }}>
             {s}
+            <span className="text-[10px] opacity-70">{SPORT_COUNTS[s]}</span>
           </button>
         ))}
       </div>
@@ -166,6 +172,27 @@ export default function ComparePlayersPage() {
           <PlayerSelect id="player-b-select" value={bId} onChange={setBId} exclude={aId} sportFilter={sportFilter} />
         </div>
       </div>
+
+      {/* Empty state */}
+      {(!playerA || !playerB) && (
+        <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+          <p className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            Select two players to compare
+          </p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+            {SPORT_LIST.length} sports · {ALL_PLAYERS.length} athletes — filter by sport above, then pick two players
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {SPORT_LIST.map(s => (
+              <button key={s} onClick={() => setSportFilter(s)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                {s} · {SPORT_COUNTS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {playerA && playerB && (
         <>
@@ -191,11 +218,11 @@ export default function ComparePlayersPage() {
           {/* Charts row */}
           <div className="grid md:grid-cols-2 gap-6">
             {radarData.length >= 3 && (
-              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Attribute Radar</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <RadarChart data={radarData}>
-                    <PolarGrid stroke="var(--border-muted)" />
+                    <PolarGrid stroke="var(--border-default)" />
                     <PolarAngleAxis dataKey="axis" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
                     <Radar name={playerA.name} dataKey={playerA.name} stroke={colorA} fill={colorA} fillOpacity={0.18} />
                     <Radar name={playerB.name} dataKey={playerB.name} stroke={colorB} fill={colorB} fillOpacity={0.18} />
@@ -206,13 +233,13 @@ export default function ComparePlayersPage() {
             )}
 
             {seasonBarData.length > 0 && (
-              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Season Stats</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={seasonBarData} layout="vertical" barSize={12} barGap={3}>
                     <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
                     <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} width={65} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)', borderRadius: 8 }} />
+                    <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 8 }} />
                     <Bar dataKey={playerA.name.split(' ')[1]} fill={colorA} radius={[0, 4, 4, 0]} />
                     <Bar dataKey={playerB.name.split(' ')[1]} fill={colorB} radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -228,7 +255,7 @@ export default function ComparePlayersPage() {
             const shared = aKeys.filter(k => bKeys.includes(k));
             if (shared.length === 0) return null;
             return (
-              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <div className="flex items-center mb-4">
                   <p className="flex-1 text-right text-sm font-bold pr-8" style={{ color: colorA }}>{playerA.name.split(' ').pop()}</p>
                   <p className="w-32 text-center text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Career Stat</p>
@@ -253,7 +280,7 @@ export default function ComparePlayersPage() {
           {/* Advanced stats */}
           <div className="grid sm:grid-cols-2 gap-4">
             {[{ p: playerA, color: colorA }, { p: playerB, color: colorB }].map(({ p, color }) => (
-              <div key={p.id} className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+              <div key={p.id} className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <p className="text-sm font-semibold" style={{ color }}>{p.name} — Advanced</p>
                 <div className="space-y-2">
                   {p.advancedStats.slice(0, 5).map(s => (
@@ -284,7 +311,7 @@ export default function ComparePlayersPage() {
           {/* Next game projections */}
           <div className="grid sm:grid-cols-2 gap-4">
             {[{ p: playerA, color: colorA }, { p: playerB, color: colorB }].map(({ p, color }) => (
-              <div key={p.id} className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)' }}>
+              <div key={p.id} className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold" style={{ color }}>{`${p.name.split(' ')[0]}'s Next Game`}</p>
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${color}18`, color }}>
