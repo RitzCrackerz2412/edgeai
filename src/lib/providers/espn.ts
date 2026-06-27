@@ -17,9 +17,18 @@ const SPORT_PATH: Partial<Record<Sport, string>> = {
   NBA:               'basketball/nba',
   MLB:               'baseball/mlb',
   NHL:               'hockey/nhl',
-  Soccer:            'soccer/eng.1',
   'NCAA Football':   'football/college-football',
   'NCAA Basketball': 'basketball/mens-college-basketball',
+};
+
+// Soccer uses multiple league paths — fetched in parallel
+const SOCCER_PATHS: Record<string, string> = {
+  EPL:        'soccer/eng.1',
+  'La Liga':  'soccer/esp.1',
+  Bundesliga: 'soccer/ger.1',
+  'Serie A':  'soccer/ita.1',
+  'Ligue 1':  'soccer/fra.1',
+  MLS:        'soccer/usa.1',
 };
 
 function normStatus(espnTypeName: string): RawGame['status'] {
@@ -99,15 +108,27 @@ export class ESPNProvider implements SportsDataProvider {
   readonly name = 'ESPN';
 
   async getGames(sport: Sport, date: string): Promise<RawGame[]> {
-    const path = SPORT_PATH[sport];
-    if (!path) return [];
-
     const d = new Date(date);
     const formatted =
       String(d.getFullYear()) +
       String(d.getMonth() + 1).padStart(2, '0') +
       String(d.getDate()).padStart(2, '0');
 
+    if (sport === 'Soccer') {
+      const results = await Promise.all(
+        Object.entries(SOCCER_PATHS).map(([league, path]) =>
+          this.fetchScoreboard(path, formatted, sport, league).catch(() => [] as RawGame[]),
+        ),
+      );
+      return results.flat();
+    }
+
+    const path = SPORT_PATH[sport];
+    if (!path) return [];
+    return this.fetchScoreboard(path, formatted, sport, sport).catch(() => []);
+  }
+
+  private async fetchScoreboard(path: string, formatted: string, sport: Sport, league: string): Promise<RawGame[]> {
     let scoreboard: ESPNScoreboard;
     try {
       scoreboard = await apiFetch<ESPNScoreboard>(
@@ -129,9 +150,9 @@ export class ESPNProvider implements SportsDataProvider {
       const venue = comp.venue;
 
       const game: RawGame = {
-        id:           ev.id,
+        id:           `${league}-${ev.id}`,
         sport,
-        league:       sport,
+        league,
         homeTeamId:   home?.team.id ?? '',
         awayTeamId:   away?.team.id ?? '',
         homeTeamName: home?.team.displayName ?? '',

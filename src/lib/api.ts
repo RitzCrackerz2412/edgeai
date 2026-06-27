@@ -29,7 +29,7 @@ import { getProviders } from './providers';
 import type { EnginePrediction } from './engine';
 import { cached, cacheKey, TTL } from './cache';
 
-const LIVE_SPORTS: Sport[] = ['NFL', 'NBA', 'MLB', 'NHL'];
+const LIVE_SPORTS: Sport[] = ['NFL', 'NBA', 'MLB', 'NHL', 'Soccer'];
 
 // ── Games ────────────────────────────────────────────────────────
 export async function getUpcomingGames(filters?: {
