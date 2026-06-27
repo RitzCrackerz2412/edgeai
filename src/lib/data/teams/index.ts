@@ -5,7 +5,7 @@ import { MLB_TEAMS }          from './mlb';
 import { NHL_TEAMS }          from './nhl';
 import { SOCCER_TEAMS }       from './soccer';
 import { WC_TEAMS, COPA_TEAMS, EURO_TEAMS } from './international';
-import { F1_DRIVERS, UFC_FIGHTERS, ATP_PLAYERS, WTA_PLAYERS, NCAAF_TEAMS, NCAAB_TEAMS } from './other';
+import { F1_DRIVERS, UFC_FIGHTERS, ATP_PLAYERS, WTA_PLAYERS, NCAAF_TEAMS, NCAAB_TEAMS, BOXING_FIGHTERS, CRICKET_PLAYERS, ESPORTS_PLAYERS } from './other';
 
 // Single flat map of every team / player / driver by ID
 export const TEAM_MAP: Record<string, Team> = {
@@ -23,6 +23,9 @@ export const TEAM_MAP: Record<string, Team> = {
   ...WTA_PLAYERS,
   ...NCAAF_TEAMS,
   ...NCAAB_TEAMS,
+  ...BOXING_FIGHTERS,
+  ...CRICKET_PLAYERS,
+  ...ESPORTS_PLAYERS,
 };
 
 export const ALL_TEAMS: Team[] = Object.values(TEAM_MAP);
@@ -42,4 +45,4 @@ export function getTeamsBySport(sport: string): Team[] {
 // Named re-exports for consumers that want per-sport arrays
 export { NFL_TEAMS, NBA_TEAMS, MLB_TEAMS, NHL_TEAMS, SOCCER_TEAMS };
 export { WC_TEAMS, COPA_TEAMS, EURO_TEAMS };
-export { F1_DRIVERS, UFC_FIGHTERS, ATP_PLAYERS, WTA_PLAYERS, NCAAF_TEAMS, NCAAB_TEAMS };
+export { F1_DRIVERS, UFC_FIGHTERS, ATP_PLAYERS, WTA_PLAYERS, NCAAF_TEAMS, NCAAB_TEAMS, BOXING_FIGHTERS, CRICKET_PLAYERS, ESPORTS_PLAYERS };

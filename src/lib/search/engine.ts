@@ -119,13 +119,14 @@ export async function ensureIndexed(): Promise<void> {
   if (indexed) return;
   indexed = true;
 
-  // Import mock data lazily to avoid circular deps
-  const { TEAM_DETAILS }  = await import('@/lib/teamData');
+  // Import all data lazily to avoid circular deps
+  const { ALL_TEAMS }      = await import('@/lib/data/teams/index');
   const { PLAYER_DETAILS } = await import('@/lib/playerData');
   const { ALL_SPORTS, SPORT_CONFIGS } = await import('@/lib/data/sports');
+  const { ALL_LEAGUES }    = await import('@/lib/data/leagues');
 
-  // Teams
-  for (const team of Object.values(TEAM_DETAILS)) {
+  // Teams — all 500+ from every league
+  for (const team of ALL_TEAMS) {
     searchIndex.add({
       id:       team.id,
       type:     'team',
@@ -136,7 +137,7 @@ export async function ensureIndexed(): Promise<void> {
     }, [team.abbreviation]);
   }
 
-  // Players
+  // Players from detailed profiles
   for (const player of Object.values(PLAYER_DETAILS)) {
     searchIndex.add({
       id:       player.id,
@@ -147,9 +148,22 @@ export async function ensureIndexed(): Promise<void> {
     });
   }
 
+  // Leagues
+  for (const league of ALL_LEAGUES) {
+    searchIndex.add({
+      id:       `league-${league.id}`,
+      type:     'league',
+      title:    league.name,
+      subtitle: `${league.sport} · ${league.country}`,
+      sport:    league.sport as Sport,
+      url:      `/league/${league.id}`,
+    }, [league.shortName]);
+  }
+
   // Sports
   for (const sport of ALL_SPORTS) {
     const cfg = SPORT_CONFIGS[sport];
+    if (!cfg) continue;
     searchIndex.add({
       id:       sport,
       type:     'sport',
@@ -158,19 +172,5 @@ export async function ensureIndexed(): Promise<void> {
       sport,
       url:      `/?sport=${sport}`,
     }, [cfg.shortName]);
-  }
-
-  // Leagues
-  for (const sport of ALL_SPORTS) {
-    for (const league of SPORT_CONFIGS[sport].leagues) {
-      searchIndex.add({
-        id:       league.id,
-        type:     'league',
-        title:    league.name,
-        subtitle: `${sport} · ${league.country}`,
-        sport,
-        url:      `/?sport=${sport}&league=${league.id}`,
-      });
-    }
   }
 }

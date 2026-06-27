@@ -338,8 +338,12 @@ function TeamPicker({
       {/* Dropdown */}
       {open && (
         <div
-          className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-xl z-50 max-h-64 overflow-y-auto"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+          className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-50 overflow-y-auto"
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-default)',
+            maxHeight: '480px',
+          }}
         >
           {results.length > 0 ? (
             results.map(t => (
@@ -348,19 +352,20 @@ function TeamPicker({
           ) : query.trim().length > 0 ? (
             <p className="px-3 py-2.5 text-xs" style={{ color: 'var(--text-muted)' }}>No results</p>
           ) : (
-            <div className="max-h-64 overflow-y-auto">
+            <>
               {sportsGroups.map(({ sport, teams }) => (
                 <div key={sport}>
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest sticky top-0"
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest sticky top-0 flex items-center justify-between"
                     style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-                    {sport}
+                    <span>{sport}</span>
+                    <span style={{ opacity: 0.6 }}>{teams.length}</span>
                   </p>
-                  {teams.slice(0, 5).map(t => (
+                  {teams.map(t => (
                     <DropdownRow key={t.id} team={t} onSelect={onSelect} />
                   ))}
                 </div>
               ))}
-            </div>
+            </>
           )}
         </div>
       )}

@@ -136,7 +136,10 @@ export function rawGameToGame(raw: RawGame): Game | null {
   const away = awayTeam ?? makeFallbackTeam(raw.sport, raw.league, raw.awayTeamName, raw.awayTeamId.slice(0, 3).toUpperCase(), 'ef4444');
 
   const dateObj = new Date(raw.scheduledAt);
-  const dateStr = dateObj.toISOString().split('T')[0];
+  const dateStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(dateObj);
   const timeStr = dateObj.toLocaleTimeString('en-US', {
     hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York',
   }) + ' ET';

@@ -50,9 +50,11 @@ export async function getUpcomingGames(filters?: {
       const rawResults = await Promise.all(
         sportsToFetch.map(s => provider.getGames(s, today).catch(() => [])),
       );
+      const seen = new Set<string>();
       liveGames = rawResults.flat()
         .map(rawGameToGame)
-        .filter((g): g is Game => g !== null);
+        .filter((g): g is Game => g !== null)
+        .filter(g => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
     } catch {
       // Fall through to mock data
     }

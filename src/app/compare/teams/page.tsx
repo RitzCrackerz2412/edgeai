@@ -2,17 +2,58 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { TEAMS } from '@/lib/mockData';
+import { ALL_TEAMS, TEAM_MAP } from '@/lib/data/teams/index';
 import { TEAM_DETAILS } from '@/lib/teamData';
 import type { Team } from '@/lib/types';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Legend,
-  BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
 } from 'recharts';
 
-const ALL_TEAMS = Object.values(TEAMS);
+// All distinct sports, sorted
+const SPORTS = ['All', ...Array.from(new Set(ALL_TEAMS.map(t => t.sport))).sort()];
 
-function TeamSelect({ value, onChange, exclude, id }: { value: string; onChange: (v: string) => void; exclude: string; id?: string }) {
+// Normalize offensiveRating / defensiveRating to 0-100 per sport
+const SPORT_RANGES: Record<string, { off: [number, number]; def: [number, number] }> = {
+  NFL:             { off: [10, 35],    def: [10, 35] },
+  NBA:             { off: [100, 130],  def: [100, 130] },
+  MLB:             { off: [3,  8],     def: [3,  8] },
+  NHL:             { off: [2.0, 4.0],  def: [2.0, 4.0] },
+  Soccer:          { off: [0.5, 3.5],  def: [0.5, 3.5] },
+  'NCAA Football': { off: [15, 45],    def: [15, 45] },
+  'NCAA Basketball':{ off: [60, 90],   def: [60, 90] },
+  UFC:             { off: [3,  7],     def: [50, 75] },
+  Boxing:          { off: [50, 100],   def: [50, 100] },
+  Tennis:          { off: [50, 100],   def: [50, 100] },
+  'Formula 1':     { off: [0, 500],    def: [0, 500] },
+  Cricket:         { off: [200, 400],  def: [200, 400] },
+  Esports:         { off: [0.8, 1.5],  def: [0.8, 1.5] },
+};
+
+function normOff(sport: string, v: number) {
+  const r = SPORT_RANGES[sport];
+  if (!r) return Math.min(100, Math.max(0, v));
+  return Math.min(100, Math.max(0, ((v - r.off[0]) / (r.off[1] - r.off[0])) * 100));
+}
+function normDef(sport: string, v: number) {
+  const r = SPORT_RANGES[sport];
+  if (!r) return Math.min(100, Math.max(0, 100 - v));
+  return Math.min(100, Math.max(0, ((r.def[1] - v) / (r.def[1] - r.def[0])) * 100));
+}
+
+function TeamSelect({ value, onChange, exclude, sportFilter, id }: {
+  value: string; onChange: (v: string) => void; exclude: string; sportFilter: string; id?: string;
+}) {
+  const filtered = sportFilter === 'All'
+    ? ALL_TEAMS.filter(t => t.id !== exclude)
+    : ALL_TEAMS.filter(t => t.sport === sportFilter && t.id !== exclude);
+
+  const byLeague = filtered.reduce<Record<string, Team[]>>((acc, t) => {
+    const key = t.league ?? t.sport;
+    acc[key] = [...(acc[key] ?? []), t];
+    return acc;
+  }, {});
+
   return (
     <select
       id={id}
@@ -21,9 +62,13 @@ function TeamSelect({ value, onChange, exclude, id }: { value: string; onChange:
       className="w-full rounded-lg px-3 py-2 text-sm cursor-pointer outline-none"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)' }}
     >
-      <option value="">— Select team —</option>
-      {ALL_TEAMS.filter(t => t.id !== exclude).map(t => (
-        <option key={t.id} value={t.id}>{t.name} ({t.sport})</option>
+      <option value="">— Select team / player —</option>
+      {Object.entries(byLeague).map(([league, teams]) => (
+        <optgroup key={league} label={league}>
+          {teams.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </optgroup>
       ))}
     </select>
   );
@@ -87,23 +132,25 @@ function genComparison(a: Team, b: Team): string {
 }
 
 export default function CompareTeamsPage() {
+  const [sportFilter, setSportFilter] = useState('All');
   const [homeId, setHomeId] = useState('kc-chiefs');
   const [awayId, setAwayId] = useState('buf-bills');
 
-  const home = TEAMS[homeId] as Team | undefined;
-  const away = TEAMS[awayId] as Team | undefined;
+  const home = TEAM_MAP[homeId] as Team | undefined;
+  const away = TEAM_MAP[awayId] as Team | undefined;
 
   const homeDetail = homeId ? TEAM_DETAILS[homeId] : null;
   const awayDetail = awayId ? TEAM_DETAILS[awayId] : null;
 
   const radarData = useMemo(() => {
     if (!home || !away) return [];
+    const sport = home.sport;
     return [
-      { axis: 'Offense',   home: home.offensiveRating / 35 * 100,     away: away.offensiveRating / 35 * 100 },
-      { axis: 'Defense',   home: (35 - home.defensiveRating) / 35 * 100, away: (35 - away.defensiveRating) / 35 * 100 },
-      { axis: 'Momentum',  home: home.momentum,                        away: away.momentum },
-      { axis: 'Win %',     home: home.winPct * 100,                    away: away.winPct * 100 },
-      { axis: 'ELO',       home: ((home.eloRating - 1400) / 600) * 100, away: ((away.eloRating - 1400) / 600) * 100 },
+      { axis: 'Offense',    home: normOff(sport, home.offensiveRating), away: normOff(sport, away.offensiveRating) },
+      { axis: 'Defense',    home: normDef(sport, home.defensiveRating), away: normDef(sport, away.defensiveRating) },
+      { axis: 'Momentum',   home: home.momentum,                        away: away.momentum },
+      { axis: 'Win %',      home: home.winPct * 100,                    away: away.winPct * 100 },
+      { axis: 'ELO',        home: Math.min(100, Math.max(0, ((home.eloRating - 1400) / 600) * 100)), away: Math.min(100, Math.max(0, ((away.eloRating - 1400) / 600) * 100)) },
       { axis: 'Power Rank', home: Math.max(0, 100 - home.powerRanking * 3), away: Math.max(0, 100 - away.powerRanking * 3) },
     ];
   }, [home, away]);
@@ -136,15 +183,30 @@ export default function CompareTeamsPage() {
         </p>
       </div>
 
+      {/* Sport filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {SPORTS.map(s => (
+          <button key={s} onClick={() => { setSportFilter(s); setHomeId(''); setAwayId(''); }}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer"
+            style={{
+              background: sportFilter === s ? 'var(--accent)' : 'var(--bg-card)',
+              color: sportFilter === s ? '#fff' : 'var(--text-secondary)',
+              border: '1px solid var(--border-muted)',
+            }}>
+            {s}
+          </button>
+        ))}
+      </div>
+
       {/* Selectors */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="team-a-select" className="block text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Team A</label>
-          <TeamSelect id="team-a-select" value={homeId} onChange={setHomeId} exclude={awayId} />
+          <TeamSelect id="team-a-select" value={homeId} onChange={setHomeId} exclude={awayId} sportFilter={sportFilter} />
         </div>
         <div>
           <label htmlFor="team-b-select" className="block text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Team B</label>
-          <TeamSelect id="team-b-select" value={awayId} onChange={setAwayId} exclude={homeId} />
+          <TeamSelect id="team-b-select" value={awayId} onChange={setAwayId} exclude={homeId} sportFilter={sportFilter} />
         </div>
       </div>
 

@@ -193,6 +193,105 @@ export const NCAAF_TEAMS: Record<string, Team> = {
   'ncaaf-arkansas':        mkNCAA_FB('ncaaf-arkansas',        'Arkansas Razorbacks',  'ARK', 'SEC',           8,5,24,28.8,24.2,1660,'#9D2235'),
 };
 
+// ── Boxing ───────────────────────────────────────────────────────────────────
+// offensiveRating = punching output / KO power (50-100)
+// defensiveRating = damage absorbed rating (lower = better, 20-60)
+// record = W-L-D
+const mkBoxer = (id: string, nm: string, ab: string, wc: string, w: number, l: number, d: number, pr: number, power: number, def: number, el: number, cl: string): Team => {
+  const gp = w + l + d;
+  const wp = parseFloat((w / (gp || 1)).toFixed(3));
+  return {
+    id, name: nm, abbreviation: ab, logo: '', sport: 'Boxing', league: wc,
+    record: d > 0 ? `${w}-${l}-${d}` : `${w}-${l}`, winPct: wp,
+    powerRanking: pr, offensiveRating: power, defensiveRating: def,
+    netRating: parseFloat((power - def).toFixed(1)), eloRating: el,
+    momentum: Math.min(99, Math.max(1, Math.round(50 + (wp - 0.5) * 80))),
+    homeRecord: `${w}-0`, awayRecord: `${l}-0`,
+    last5: ['W', 'W', 'W', 'L', 'W'] as ('W' | 'L')[],
+    injuries: [], color: cl,
+  };
+};
+
+export const BOXING_FIGHTERS: Record<string, Team> = {
+  'box-canelo':       mkBoxer('box-canelo',       'Canelo Alvarez',      'CAN', 'Super Middleweight', 61, 2, 2,  1, 92,28,1950,'#C8102E'),
+  'box-usyk':         mkBoxer('box-usyk',          'Oleksandr Usyk',      'USY', 'Heavyweight',        23, 0, 0,  2, 88,22,1940,'#005BBB'),
+  'box-fury':         mkBoxer('box-fury',          'Tyson Fury',          'FUR', 'Heavyweight',        34, 0, 1,  3, 85,30,1920,'#1F5C99'),
+  'box-crawford':     mkBoxer('box-crawford',      'Terence Crawford',    'CRA', 'Welterweight',       40, 0, 0,  4, 91,25,1930,'#003087'),
+  'box-inoue':        mkBoxer('box-inoue',         'Naoya Inoue',         'INO', 'Super Bantamweight', 28, 0, 0,  5, 95,20,1935,'#BC002D'),
+  'box-wilder':       mkBoxer('box-wilder',        'Deontay Wilder',      'WIL', 'Heavyweight',        43, 4, 1,  6, 97,42,1820,'#002868'),
+  'box-joshua':       mkBoxer('box-joshua',        'Anthony Joshua',      'JOS', 'Heavyweight',        28, 4, 0,  7, 88,38,1830,'#012169'),
+  'box-garcia':       mkBoxer('box-garcia',        'Ryan Garcia',         'GAR', 'Lightweight',        24, 1, 0,  8, 89,30,1860,'#003087'),
+  'box-davis':        mkBoxer('box-davis',         'Gervonta Davis',      'DAV', 'Super Featherweight',30, 0, 0,  9, 93,24,1900,'#FFD700'),
+  'box-haney':        mkBoxer('box-haney',         'Devin Haney',         'HAN', 'Lightweight',        31, 2, 0, 10, 82,28,1840,'#1565C0'),
+};
+
+// ── Cricket ──────────────────────────────────────────────────────────────────
+// offensiveRating = batting average (25-60, higher = better)
+// defensiveRating = bowling economy (3-8, lower = better for bowlers; 5 neutral for batters)
+const mkCricket = (id: string, nm: string, ab: string, country: string, r: number, avg: number, pr: number, bat: number, bowl: number, el: number, cl: string): Team => {
+  const wp = parseFloat(Math.min(0.99, Math.max(0.3, avg / 60)).toFixed(3));
+  return {
+    id, name: nm, abbreviation: ab, logo: '', sport: 'Cricket', league: country,
+    record: `${r} runs`, winPct: wp,
+    powerRanking: pr, offensiveRating: bat, defensiveRating: bowl,
+    netRating: parseFloat((bat - bowl * 5).toFixed(1)), eloRating: el,
+    momentum: Math.min(99, Math.max(1, Math.round(50 + (wp - 0.5) * 80))),
+    homeRecord: `${Math.round(r * 0.55)} home`, awayRecord: `${Math.round(r * 0.45)} away`,
+    last5: ['W', 'W', 'L', 'W', 'W'] as ('W' | 'L')[],
+    injuries: [], color: cl,
+  };
+};
+
+export const CRICKET_PLAYERS: Record<string, Team> = {
+  'cri-kohli':        mkCricket('cri-kohli',        'Virat Kohli',         'VKO', 'India',       27000,49.6, 1, 95, 5,1920,'#0033A0'),
+  'cri-rohit':        mkCricket('cri-rohit',        'Rohit Sharma',        'ROS', 'India',       25000,45.8, 2, 88, 5,1890,'#0033A0'),
+  'cri-root':         mkCricket('cri-root',         'Joe Root',            'ROO', 'England',     13500,50.1, 3, 92, 5,1900,'#003399'),
+  'cri-smith':        mkCricket('cri-smith',        'Steve Smith',         'SMI', 'Australia',   10000,58.9, 4, 96, 5,1910,'#FFD700'),
+  'cri-stokes':       mkCricket('cri-stokes',       'Ben Stokes',          'STO', 'England',      7500,36.4, 5, 85,6.2,1870,'#CC0000'),
+  'cri-babar':        mkCricket('cri-babar',        'Babar Azam',          'BAB', 'Pakistan',    13000,45.2, 6, 87, 5,1860,'#006600'),
+  'cri-bumrah':       mkCricket('cri-bumrah',       'Jasprit Bumrah',      'BUM', 'India',         800, 8.2, 7, 40,4.2,1880,'#0033A0'),
+  'cri-cummins':      mkCricket('cri-cummins',      'Pat Cummins',         'CUM', 'Australia',    1800,14.8, 8, 48,4.4,1850,'#FFD700'),
+  'cri-williamson':   mkCricket('cri-williamson',   'Kane Williamson',     'WIL', 'New Zealand',  8500,52.1, 9, 90, 5,1880,'#000000'),
+  'cri-warner':       mkCricket('cri-warner',       'David Warner',        'WAR', 'Australia',   17000,44.6,10, 86, 5,1840,'#FFD700'),
+};
+
+// ── Esports ──────────────────────────────────────────────────────────────────
+// offensiveRating = mechanical/aim score (60-100)
+// defensiveRating = utility/support score (lower = less needed = more carry, higher = more support-oriented)
+const mkEsports = (id: string, nm: string, ab: string, game: string, w: number, l: number, pr: number, aim: number, iq: number, el: number, cl: string): Team => {
+  const wp = parseFloat((w / (w + l)).toFixed(3));
+  return {
+    id, name: nm, abbreviation: ab, logo: '', sport: 'Esports', league: game,
+    record: `${w}-${l}`, winPct: wp,
+    powerRanking: pr, offensiveRating: aim, defensiveRating: iq,
+    netRating: parseFloat((aim - iq * 0.5).toFixed(1)), eloRating: el,
+    momentum: Math.min(99, Math.max(1, Math.round(50 + (wp - 0.5) * 80))),
+    homeRecord: `${Math.round(w * 0.6)}-${Math.round(l * 0.4)}`, awayRecord: `${Math.round(w * 0.4)}-${Math.round(l * 0.6)}`,
+    last5: ['W', 'W', 'L', 'W', 'W'] as ('W' | 'L')[],
+    injuries: [], color: cl,
+  };
+};
+
+export const ESPORTS_PLAYERS: Record<string, Team> = {
+  // CS2
+  'es-zywoo':         mkEsports('es-zywoo',         'ZywOo',               'ZYW', 'CS2',           180,60, 1, 98,72,1940,'#FF4655'),
+  'es-simple':        mkEsports('es-simple',        's1mple',              'S1M', 'CS2',           210,80, 2, 97,70,1930,'#FFD700'),
+  'es-niko':          mkEsports('es-niko',          'NiKo',                'NIK', 'CS2',           200,75, 3, 95,68,1910,'#E63946'),
+  'es-device':        mkEsports('es-device',        'device',              'DEV', 'CS2',           190,65, 4, 93,75,1900,'#C62828'),
+  'es-m0nesy':        mkEsports('es-m0nesy',        'm0NESY',              'M0N', 'CS2',           160,55, 5, 94,71,1890,'#CC0000'),
+  // League of Legends
+  'es-faker':         mkEsports('es-faker',         'Faker',               'FAK', 'League of Legends', 320,80, 1, 96,90,1950,'#C89B3C'),
+  'es-caps':          mkEsports('es-caps',          'Caps',                'CAP', 'League of Legends', 220,90, 2, 92,85,1880,'#1E90FF'),
+  'es-ruler':         mkEsports('es-ruler',         'Ruler',               'RUL', 'League of Legends', 200,85, 3, 90,82,1860,'#C89B3C'),
+  // Valorant
+  'es-tenz':          mkEsports('es-tenz',          'TenZ',                'TNZ', 'Valorant',      140,60, 1, 97,73,1920,'#FF4655'),
+  'es-aspas':         mkEsports('es-aspas',         'aspas',               'ASP', 'Valorant',      150,55, 2, 96,70,1910,'#009246'),
+  'es-chronicle':     mkEsports('es-chronicle',     'Chronicle',           'CHR', 'Valorant',      145,65, 3, 91,78,1880,'#1E90FF'),
+  // Fortnite
+  'es-bugha':         mkEsports('es-bugha',         'Bugha',               'BUG', 'Fortnite',      120,40, 1, 95,88,1920,'#00B0F0'),
+  'es-clix':          mkEsports('es-clix',          'Clix',                'CLX', 'Fortnite',      110,45, 2, 93,86,1900,'#7B2FBE'),
+};
+
 export const NCAAB_TEAMS: Record<string, Team> = {
   'ncaab-duke':            mkNCAA_BB('ncaab-duke',            'Duke Blue Devils',     'DUKE','ACC',           30,5, 1,86.4,64.2,1880,'#003087'),
   'ncaab-kentucky':        mkNCAA_BB('ncaab-kentucky',        'Kentucky Wildcats',    'UK',  'SEC',           28,7, 2,84.8,65.8,1860,'#0033A0'),

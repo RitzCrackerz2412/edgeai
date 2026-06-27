@@ -3,15 +3,22 @@ import { getUpcomingGames, getLeagues } from '@/lib/api';
 import type { Game, LeagueFixture } from '@/lib/types';
 import { sportIcon } from '@/lib/utils';
 
-function todayStr()    { return new Date().toISOString().split('T')[0]; }
-function tomorrowStr() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; }
-function weekEndStr()  { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]; }
+// Use Eastern Time for date bucketing so evening games aren't bumped to "tomorrow"
+const ET = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+});
+function etDate(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return ET.format(d); // returns "YYYY-MM-DD"
+}
 
 function classify(dateStr: string): 'today' | 'tomorrow' | 'week' | 'later' {
   const day = dateStr.slice(0, 10);
-  if (day === todayStr())    return 'today';
-  if (day === tomorrowStr()) return 'tomorrow';
-  if (day <= weekEndStr())   return 'week';
+  if (day === etDate(0)) return 'today';
+  if (day === etDate(1)) return 'tomorrow';
+  if (day <= etDate(7))  return 'week';
   return 'later';
 }
 

@@ -10,9 +10,16 @@ import {
 } from 'recharts';
 
 const ALL_PLAYERS = Object.values(PLAYER_DETAILS);
+const PLAYER_SPORTS = ['All', ...Array.from(new Set(ALL_PLAYERS.map(p => p.sport))).sort()];
 
-function PlayerSelect({ value, onChange, exclude, id }: { value: string; onChange: (v: string) => void; exclude: string; id?: string }) {
-  const grouped = ALL_PLAYERS.reduce<Record<string, PlayerDetail[]>>((acc, p) => {
+function PlayerSelect({ value, onChange, exclude, sportFilter, id }: {
+  value: string; onChange: (v: string) => void; exclude: string; sportFilter: string; id?: string;
+}) {
+  const visible = sportFilter === 'All'
+    ? ALL_PLAYERS.filter(p => p.id !== exclude)
+    : ALL_PLAYERS.filter(p => p.sport === sportFilter && p.id !== exclude);
+
+  const grouped = visible.reduce<Record<string, PlayerDetail[]>>((acc, p) => {
     acc[p.sport] = [...(acc[p.sport] ?? []), p];
     return acc;
   }, {});
@@ -28,7 +35,7 @@ function PlayerSelect({ value, onChange, exclude, id }: { value: string; onChang
       <option value="">— Select player —</option>
       {Object.entries(grouped).map(([sport, players]) => (
         <optgroup key={sport} label={sport}>
-          {players.filter(p => p.id !== exclude).map(p => (
+          {players.map(p => (
             <option key={p.id} value={p.id}>{p.name} · {p.position} · {p.teamName}</option>
           ))}
         </optgroup>
@@ -77,6 +84,7 @@ function genPlayerComparison(a: PlayerDetail, b: PlayerDetail): string {
 }
 
 export default function ComparePlayersPage() {
+  const [sportFilter, setSportFilter] = useState('All');
   const [aId, setAId] = useState('pm-15');  // Mahomes
   const [bId, setBId] = useState(ALL_PLAYERS.find(p => p.id !== 'pm-15')?.id ?? '');
 
@@ -132,15 +140,30 @@ export default function ComparePlayersPage() {
         </p>
       </div>
 
+      {/* Sport filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {PLAYER_SPORTS.map(s => (
+          <button key={s} onClick={() => { setSportFilter(s); setAId(''); setBId(''); }}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer"
+            style={{
+              background: sportFilter === s ? 'var(--accent)' : 'var(--bg-card)',
+              color: sportFilter === s ? '#fff' : 'var(--text-secondary)',
+              border: '1px solid var(--border-muted)',
+            }}>
+            {s}
+          </button>
+        ))}
+      </div>
+
       {/* Selectors */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="player-a-select" className="block text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Player A</label>
-          <PlayerSelect id="player-a-select" value={aId} onChange={setAId} exclude={bId} />
+          <PlayerSelect id="player-a-select" value={aId} onChange={setAId} exclude={bId} sportFilter={sportFilter} />
         </div>
         <div>
           <label htmlFor="player-b-select" className="block text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Player B</label>
-          <PlayerSelect id="player-b-select" value={bId} onChange={setBId} exclude={aId} />
+          <PlayerSelect id="player-b-select" value={bId} onChange={setBId} exclude={aId} sportFilter={sportFilter} />
         </div>
       </div>
 

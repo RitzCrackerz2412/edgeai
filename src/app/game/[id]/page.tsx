@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getGameById } from '@/lib/api';
 import { GAME_SIM_CONFIGS } from '@/lib/simulatorData';
+import { getEspnGameSummary } from '@/lib/providers/gameSummary';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
@@ -16,6 +17,7 @@ import { ExplainableAI } from '@/components/analysis/ExplainableAI';
 import { MatchupTable } from '@/components/analysis/MatchupTable';
 import { GameContextCard } from '@/components/analysis/GameContextCard';
 import { PredictionSimulator } from '@/components/analysis/PredictionSimulator';
+import { MatchReview } from '@/components/analysis/MatchReview';
 import { formatDate, sportIcon } from '@/lib/utils';
 import { ArrowLeft, Calendar, MapPin, Wind, CheckCircle } from 'lucide-react';
 import type { Team } from '@/lib/types';
@@ -38,6 +40,13 @@ export default async function GamePage({ params }: Props) {
   const winnerIsHome = prediction.winner === homeTeam.name;
   const homeWinPct = winnerIsHome ? prediction.winProbability : 100 - prediction.winProbability;
   const simConfig = GAME_SIM_CONFIGS[id] ?? null;
+
+  // For Final ESPN games, fetch period-by-period breakdown
+  const isFinal = game.status === 'Final';
+  const espnEventId = isFinal && id.startsWith('espn-') ? id.slice(5) : null;
+  const gameSummary = espnEventId
+    ? await getEspnGameSummary(espnEventId, game.sport, game.league)
+    : null;
 
   return (
     <div className="p-6 max-w-screen-xl mx-auto space-y-6 anim-fade-in">
@@ -72,6 +81,22 @@ export default async function GamePage({ params }: Props) {
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <span className="text-base">{sportIcon(game.sport)}</span>
           <Badge variant="accent">{game.league}</Badge>
+          {game.status === 'Final' && (
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded"
+              style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--success)' }}
+            >
+              FINAL
+            </span>
+          )}
+          {game.status === 'Live' && (
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded animate-pulse"
+              style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+            >
+              ● LIVE
+            </span>
+          )}
           <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-muted)' }}>
             <Calendar size={12} />
             {formatDate(game.date)} · {game.time}
@@ -97,13 +122,28 @@ export default async function GamePage({ params }: Props) {
               <span className="text-xl" style={{ color: 'var(--text-muted)' }}>–</span>
               <span style={{ color: awayTeam.color }}>{prediction.predictedScore.away}</span>
             </div>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Predicted score</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {game.status === 'Final' ? 'Final score' : 'Predicted score'}
+            </span>
           </div>
           <TeamBlock team={awayTeam} isHome={false} label="Away" isWinner={!winnerIsHome} />
         </div>
 
         <WinProbabilityBar homeTeam={homeTeam} awayTeam={awayTeam} homeWinPct={homeWinPct} />
       </div>
+
+      {/* Match Review — shown for completed games */}
+      {isFinal && (
+        <Card title="Match Review">
+          <MatchReview
+            homeTeam={homeTeam}
+            awayTeam={awayTeam}
+            winnerProbability={prediction.winProbability}
+            actualWinner={prediction.winner}
+            summary={gameSummary}
+          />
+        </Card>
+      )}
 
       {/* Main 3-column grid */}
       <div className="grid lg:grid-cols-3 gap-6">
