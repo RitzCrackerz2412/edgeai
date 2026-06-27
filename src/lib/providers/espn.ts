@@ -23,12 +23,13 @@ const SPORT_PATH: Partial<Record<Sport, string>> = {
 
 // Soccer uses multiple league paths — fetched in parallel
 const SOCCER_PATHS: Record<string, string> = {
-  EPL:        'soccer/eng.1',
-  'La Liga':  'soccer/esp.1',
-  Bundesliga: 'soccer/ger.1',
-  'Serie A':  'soccer/ita.1',
-  'Ligue 1':  'soccer/fra.1',
-  MLS:        'soccer/usa.1',
+  'World Cup':  'soccer/fifa.world',
+  EPL:          'soccer/eng.1',
+  'La Liga':    'soccer/esp.1',
+  Bundesliga:   'soccer/ger.1',
+  'Serie A':    'soccer/ita.1',
+  'Ligue 1':    'soccer/fra.1',
+  MLS:          'soccer/usa.1',
 };
 
 function normStatus(espnTypeName: string): RawGame['status'] {
@@ -133,7 +134,7 @@ export class ESPNProvider implements SportsDataProvider {
     try {
       scoreboard = await apiFetch<ESPNScoreboard>(
         `${BASE}/${path}/scoreboard?dates=${formatted}`,
-        { rateLimitKey: 'espn', timeoutMs: 8_000, retries: 2 },
+        { rateLimitKey: `espn-${path.split('/')[0]}`, timeoutMs: 8_000, retries: 2 },
       );
     } catch {
       return [];

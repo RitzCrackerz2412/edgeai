@@ -38,9 +38,15 @@ function findTeam(sport: Sport, displayName: string): Team | null {
 
   // 2. Linear scan for partial-name match within sport
   const sportTeams = ALL_TEAMS.filter(t => t.sport === sport);
+  // Abbreviation match: only treat as a hit if the abbreviation appears as a
+  // standalone word in the query, not just as a substring (avoids "VER" matching "cape verde")
+  const abbrWordMatch = (abbr: string) => {
+    const a = abbr.toLowerCase();
+    return new RegExp(`(^|\\s)${a}(\\s|$)`).test(q);
+  };
   return (
     sportTeams.find(t => t.name.toLowerCase() === q) ??
-    sportTeams.find(t => q.includes(t.abbreviation.toLowerCase())) ??
+    sportTeams.find(t => abbrWordMatch(t.abbreviation)) ??
     sportTeams.find(t => t.name.toLowerCase().includes(q.split(' ').pop()!)) ??
     null
   );

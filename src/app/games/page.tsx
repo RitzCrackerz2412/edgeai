@@ -3,15 +3,15 @@ import { getUpcomingGames, getLeagues } from '@/lib/api';
 import type { Game, LeagueFixture } from '@/lib/types';
 import { sportIcon } from '@/lib/utils';
 
-const TODAY    = new Date('2026-06-26');
-const TOMORROW = new Date('2026-06-27');
-const WEEK_END = new Date('2026-07-03');
+function todayStr()    { return new Date().toISOString().split('T')[0]; }
+function tomorrowStr() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; }
+function weekEndStr()  { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]; }
 
 function classify(dateStr: string): 'today' | 'tomorrow' | 'week' | 'later' {
-  const d = new Date(dateStr);
-  if (d.toDateString() === TODAY.toDateString())    return 'today';
-  if (d.toDateString() === TOMORROW.toDateString()) return 'tomorrow';
-  if (d <= WEEK_END)                                return 'week';
+  const day = dateStr.slice(0, 10);
+  if (day === todayStr())    return 'today';
+  if (day === tomorrowStr()) return 'tomorrow';
+  if (day <= weekEndStr())   return 'week';
   return 'later';
 }
 

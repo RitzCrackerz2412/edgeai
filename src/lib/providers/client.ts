@@ -26,7 +26,7 @@ interface RateLimitWindow {
 }
 
 const rateLimitWindows = new Map<string, RateLimitWindow>();
-const MAX_REQUESTS_PER_MINUTE = 60;
+const MAX_REQUESTS_PER_MINUTE = 120;
 
 function checkRateLimit(key: string): void {
   const now = Date.now();
