@@ -52,8 +52,8 @@ export default async function TeamsPage() {
               </div>
               <div className="ml-auto text-right shrink-0">
                 <div className="font-bold text-mono" style={{ color: 'var(--text-primary)' }}>{team.record}</div>
-                <div className="text-xs" style={{ color: team.streak.startsWith('W') ? 'var(--success)' : 'var(--danger)' }}>
-                  {team.streak}
+                <div className="text-xs" style={{ color: team.last5[0] === 'W' ? 'var(--success)' : 'var(--danger)' }}>
+                  {team.last5[0] === 'W' ? 'Win' : team.last5[0] === 'D' ? 'Draw' : 'Loss'}
                 </div>
               </div>
             </div>
@@ -83,11 +83,24 @@ export default async function TeamsPage() {
               </div>
             </div>
 
-            {/* Last 10 */}
+            {/* Last 5 */}
             <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Last 10: {team.last10}</span>
-              <Badge variant={team.streak.startsWith('W') ? 'green' : 'red'}>
-                {team.streak}
+              <div className="flex gap-1">
+                {team.last5.map((r, i) => (
+                  <span
+                    key={i}
+                    className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded"
+                    style={{
+                      background: r === 'W' ? 'var(--success)' : r === 'D' ? 'var(--warning)' : 'var(--danger)',
+                      color: '#fff',
+                    }}
+                  >
+                    {r}
+                  </span>
+                ))}
+              </div>
+              <Badge variant={team.last5[0] === 'W' ? 'green' : 'red'}>
+                {team.last5.filter(r => r === 'W').length}-{team.last5.filter(r => r === 'L').length}
               </Badge>
             </div>
           </Link>

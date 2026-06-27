@@ -43,7 +43,7 @@ export default async function PlayersPage() {
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0"
                 style={{ background: player.teamColor }}
               >
-                {player.number}
+                {player.jersey}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{player.name}</div>
@@ -54,22 +54,20 @@ export default async function PlayersPage() {
               <Badge variant={statusVariant(player.status as PlayerStatus)}>{player.status}</Badge>
             </div>
 
-            {/* Sport chip + primary stat */}
-            <div className="flex items-center justify-between">
+            {/* Sport chip + league */}
+            <div className="flex items-center gap-2">
               <div
                 className="text-xs font-semibold px-2 py-0.5 rounded"
                 style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
               >
                 {player.sport}
               </div>
-              {player.primaryStat && (
-                <div className="text-right">
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{player.primaryStat.label} </span>
-                  <span className="font-bold text-mono" style={{ color: 'var(--accent-light)' }}>
-                    {player.primaryStat.value}
-                  </span>
-                </div>
-              )}
+              <div
+                className="text-xs px-2 py-0.5 rounded"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+              >
+                {player.league}
+              </div>
             </div>
 
             {/* View indicator */}

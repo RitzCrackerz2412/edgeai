@@ -16,7 +16,7 @@ const SPORT_PATH: Partial<Record<Sport, string>> = {
   NFL:               'football/nfl',
   NBA:               'basketball/nba',
   MLB:               'baseball/mlb',
-  NHL:               'icehockey/nhl',
+  NHL:               'hockey/nhl',
   Soccer:            'soccer/eng.1',
   'NCAA Football':   'football/college-football',
   'NCAA Basketball': 'basketball/mens-college-basketball',

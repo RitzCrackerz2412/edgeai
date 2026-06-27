@@ -17,15 +17,19 @@
 
 import { Game, Sport, AccuracyStats, PredictionRecord, LeagueData, Tournament, type Team } from './types';
 import { MOCK_GAMES, ACCURACY_STATS, PREDICTION_HISTORY } from './mockData';
-import { TEAM_DETAILS, TEAM_LIST, type TeamDetail } from './teamData';
+import { TEAM_DETAILS, type TeamDetail } from './teamData';
 import { PLAYER_DETAILS, PLAYER_LIST, type PlayerDetail } from './playerData';
 import { ALL_TEAMS, TEAM_MAP } from './data/teams/index';
 import { LEAGUES, ALL_LEAGUES } from './data/leagues';
 import { TOURNAMENTS, ALL_TOURNAMENTS } from './data/tournaments';
+import { rawGameToGame, getAllEspnPlayers, type PlayerSummary } from './data/live';
+import { getProviders } from './providers';
 
 // Engine imports (tree-shaken in production if ENGINE_ENABLED is false)
 import type { EnginePrediction } from './engine';
 import { cached, cacheKey, TTL } from './cache';
+
+const LIVE_SPORTS: Sport[] = ['NFL', 'NBA', 'MLB', 'NHL'];
 
 // ── Games ────────────────────────────────────────────────────────
 export async function getUpcomingGames(filters?: {
@@ -33,34 +37,85 @@ export async function getUpcomingGames(filters?: {
   league?: string;
   minConfidence?: number;
 }): Promise<Game[]> {
-  // Live: fetch from sports schedule API (SportsDataIO) when API key is set
-  let games = [...MOCK_GAMES];
-  if (filters?.sport)           games = games.filter(g => g.sport === filters.sport);
-  if (filters?.league)          games = games.filter(g => g.league.toLowerCase().includes(filters.league!.toLowerCase()));
-  if (filters?.minConfidence)   games = games.filter(g => g.prediction.confidence >= filters.minConfidence!);
+  // Fetch live games from ESPN for supported sports, merge with mock data
+  const today = new Date().toISOString().split('T')[0];
+  const sportsToFetch = filters?.sport
+    ? (LIVE_SPORTS.includes(filters.sport) ? [filters.sport] : [])
+    : LIVE_SPORTS;
+
+  let liveGames: Game[] = [];
+  if (sportsToFetch.length > 0) {
+    try {
+      const provider = getProviders().sports;
+      const rawResults = await Promise.all(
+        sportsToFetch.map(s => provider.getGames(s, today).catch(() => [])),
+      );
+      liveGames = rawResults.flat()
+        .map(rawGameToGame)
+        .filter((g): g is Game => g !== null);
+    } catch {
+      // Fall through to mock data
+    }
+  }
+
+  // Merge: live games take priority; keep mock games for sports not covered by ESPN
+  const liveIds = new Set(liveGames.map(g => g.id));
+  const mockFallback = MOCK_GAMES.filter(g => !LIVE_SPORTS.includes(g.sport) && !liveIds.has(g.id));
+  let games = [...liveGames, ...mockFallback];
+
+  if (filters?.sport)         games = games.filter(g => g.sport === filters.sport);
+  if (filters?.league)        games = games.filter(g => g.league.toLowerCase().includes(filters.league!.toLowerCase()));
+  if (filters?.minConfidence) games = games.filter(g => g.prediction.confidence >= filters.minConfidence!);
   return games;
 }
 
 export async function getGameById(id: string): Promise<Game | null> {
-  // Live: fetch single game with live score updates from sports API
+  // Check ESPN live games first, then fall back to mock
+  if (id.startsWith('espn-')) {
+    const espnId = id.slice(5);
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      const provider = getProviders().sports;
+      for (const sport of LIVE_SPORTS) {
+        const rawGames = await provider.getGames(sport, today).catch(() => []);
+        const match = rawGames.find(r => r.id === espnId);
+        if (match) return rawGameToGame(match);
+      }
+    } catch { /* fall through */ }
+  }
   return MOCK_GAMES.find(g => g.id === id) ?? null;
 }
 
 // ── Teams ────────────────────────────────────────────────────────
-export async function getTeams(): Promise<typeof TEAM_LIST> {
-  // Live: fetch team list from sports standings API
-  return TEAM_LIST;
+export async function getTeams(): Promise<Team[]> {
+  return ALL_TEAMS;
 }
 
-export async function getTeamById(id: string): Promise<TeamDetail | null> {
-  // Live: fetch full team profile including roster / injuries from Sportradar
-  return TEAM_DETAILS[id] ?? null;
+export async function getTeamById(id: string): Promise<TeamDetail | Team | null> {
+  // Legacy detailed profiles first, then v3 team data
+  return TEAM_DETAILS[id] ?? TEAM_MAP[id] ?? null;
 }
 
 // ── Players ──────────────────────────────────────────────────────
-export async function getPlayers(): Promise<typeof PLAYER_LIST> {
-  // Live: fetch player list from sports stats API
-  return PLAYER_LIST;
+export async function getPlayers(): Promise<PlayerSummary[]> {
+  // Live ESPN roster data for all major US sports
+  try {
+    const espnPlayers = await getAllEspnPlayers();
+    if (espnPlayers.length > 0) return espnPlayers;
+  } catch { /* fall through to mock */ }
+  // Fallback: wrap old player list into PlayerSummary shape
+  return PLAYER_LIST.map(p => ({
+    id: p.id,
+    name: p.name,
+    position: p.position ?? '—',
+    jersey: '—',
+    teamId: p.teamId ?? '',
+    teamName: p.teamName ?? '',
+    teamColor: '#6366f1',
+    sport: (p.sport ?? 'NFL') as Sport,
+    league: (p.sport ?? 'NFL') as string,
+    status: 'Active' as const,
+  }));
 }
 
 export async function getPlayerById(id: string): Promise<PlayerDetail | null> {
@@ -96,7 +151,7 @@ export async function searchAll(query: string) {
   const q = query.toLowerCase();
   return {
     games:   (await searchGames(query)),
-    teams:   TEAM_LIST.filter(t =>
+    teams: ALL_TEAMS.filter(t =>
       t.name.toLowerCase().includes(q) || t.sport.toLowerCase().includes(q)
     ),
     players: PLAYER_LIST.filter(p =>

@@ -33,6 +33,21 @@ export function MatchupClient({ teams }: Props) {
     return SPORT_ORDER.filter(s => map[s]).map(s => ({ sport: s, teams: map[s] }));
   }, [teams]);
 
+  // When Team A is selected, Team B pool is restricted to the same sport
+  const teamBPool = useMemo(
+    () => teamA ? teams.filter(t => t.sport === teamA.sport && t.id !== teamA.id) : teams,
+    [teams, teamA],
+  );
+
+  const sportsGroupsB = useMemo(() => {
+    const map: Record<string, Team[]> = {};
+    for (const t of teamBPool) {
+      if (!map[t.sport]) map[t.sport] = [];
+      map[t.sport].push(t);
+    }
+    return SPORT_ORDER.filter(s => map[s]).map(s => ({ sport: s, teams: map[s] }));
+  }, [teamBPool]);
+
   const filteredA = useMemo(() => {
     if (!queryA.trim()) return [];
     const q = queryA.toLowerCase();
@@ -46,12 +61,12 @@ export function MatchupClient({ teams }: Props) {
   const filteredB = useMemo(() => {
     if (!queryB.trim()) return [];
     const q = queryB.toLowerCase();
-    return teams.filter(t =>
+    return teamBPool.filter(t =>
       t.name.toLowerCase().includes(q) ||
       t.abbreviation.toLowerCase().includes(q) ||
       t.league.toLowerCase().includes(q)
     ).slice(0, 8);
-  }, [teams, queryB]);
+  }, [teamBPool, queryB]);
 
   const prediction = useMemo(() => {
     if (!teamA || !teamB) return null;
@@ -93,8 +108,11 @@ export function MatchupClient({ teams }: Props) {
           results={filteredA}
           sportsGroups={sportsGroups}
           onQueryChange={q => { setQueryA(q); setOpenA(true); }}
-          onSelect={t => { setTeamA(t); setQueryA(t.name); setOpenA(false); }}
-          onClear={() => { setTeamA(null); setQueryA(''); }}
+          onSelect={t => {
+            if (teamA && t.sport !== teamA.sport) { setTeamB(null); setQueryB(''); }
+            setTeamA(t); setQueryA(t.name); setOpenA(false);
+          }}
+          onClear={() => { setTeamA(null); setQueryA(''); setTeamB(null); setQueryB(''); }}
           onFocus={() => setOpenA(true)}
           onBlur={() => setTimeout(() => setOpenA(false), 150)}
         />
@@ -104,7 +122,8 @@ export function MatchupClient({ teams }: Props) {
           query={queryB}
           open={openB}
           results={filteredB}
-          sportsGroups={sportsGroups}
+          sportsGroups={sportsGroupsB}
+          lockedSport={teamA?.sport}
           onQueryChange={q => { setQueryB(q); setOpenB(true); }}
           onSelect={t => { setTeamB(t); setQueryB(t.name); setOpenB(false); }}
           onClear={() => { setTeamB(null); setQueryB(''); }}
@@ -248,7 +267,7 @@ export function MatchupClient({ teams }: Props) {
 }
 
 function TeamPicker({
-  label, selected, query, open, results, sportsGroups,
+  label, selected, query, open, results, sportsGroups, lockedSport,
   onQueryChange, onSelect, onClear, onFocus, onBlur,
 }: {
   label: string;
@@ -257,6 +276,7 @@ function TeamPicker({
   open: boolean;
   results: Team[];
   sportsGroups: { sport: string; teams: Team[] }[];
+  lockedSport?: string;
   onQueryChange: (q: string) => void;
   onSelect: (t: Team) => void;
   onClear: () => void;
@@ -265,9 +285,19 @@ function TeamPicker({
 }) {
   return (
     <div className="relative">
-      <label className="block text-xs font-semibold mb-1.5 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-        {label}
-      </label>
+      <div className="flex items-center gap-2 mb-1.5">
+        <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+          {label}
+        </label>
+        {lockedSport && (
+          <span
+            className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+            style={{ background: 'var(--accent-dim)', color: 'var(--accent-light)' }}
+          >
+            {lockedSport} only
+          </span>
+        )}
+      </div>
       <div className="relative">
         <input
           type="text"

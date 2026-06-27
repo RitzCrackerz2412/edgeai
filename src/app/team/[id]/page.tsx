@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTeamById } from '@/lib/api';
+import type { TeamDetail } from '@/lib/teamData';
+import type { Team } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { RosterTable } from '@/components/teams/RosterTable';
@@ -18,6 +20,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const team = await getTeamById(id);
   if (!team) return { title: 'Team Not Found' };
   return { title: `${team.name}` };
+}
+
+function isTeamDetail(t: TeamDetail | Team): t is TeamDetail {
+  return 'conference' in t;
 }
 
 function PercentileBar({ value }: { value?: number }) {
@@ -54,6 +60,13 @@ export default async function TeamDetailPage({ params }: Props) {
 
   const netRating = (team.offensiveRating - team.defensiveRating).toFixed(1);
   const netPositive = parseFloat(netRating) >= 0;
+  const streak = isTeamDetail(team)
+    ? team.streak
+    : (() => {
+        const first = team.last5[0];
+        const count = team.last5.findIndex(r => r !== first);
+        return `${first}${count === -1 ? team.last5.length : count}`;
+      })();
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 anim-fade-in">
@@ -88,8 +101,8 @@ export default async function TeamDetailPage({ params }: Props) {
             <h1 className="text-h1" style={{ color: 'var(--text-primary)' }}>{team.name}</h1>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="default">{team.league}</Badge>
-              <Badge variant="default">{team.conference}</Badge>
-              <Badge variant="default">{team.division}</Badge>
+              {isTeamDetail(team) && <Badge variant="default">{team.conference}</Badge>}
+              {isTeamDetail(team) && <Badge variant="default">{team.division}</Badge>}
               <Badge variant="accent">#{team.powerRanking} Power Rank</Badge>
             </div>
           </div>
@@ -101,8 +114,8 @@ export default async function TeamDetailPage({ params }: Props) {
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Overall</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-mono" style={{ color: team.streak.startsWith('W') ? 'var(--success)' : 'var(--danger)' }}>
-                {team.streak}
+              <div className="text-2xl font-bold text-mono" style={{ color: streak.startsWith('W') ? 'var(--success)' : 'var(--danger)' }}>
+                {streak}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Streak</div>
             </div>
@@ -125,69 +138,97 @@ export default async function TeamDetailPage({ params }: Props) {
         {/* Left column: season stats + advanced */}
         <div className="space-y-6">
           {/* Season stats */}
-          <Card title="Season Stats">
-            <div className="space-y-2.5">
-              {team.seasonStats.map(s => (
-                <div key={s.label} className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-mono" style={{ color: 'var(--text-primary)' }}>{s.value}</span>
-                    {s.rank && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
-                        #{s.rank}
-                      </span>
-                    )}
+          {isTeamDetail(team) && (
+            <Card title="Season Stats">
+              <div className="space-y-2.5">
+                {team.seasonStats.map(s => (
+                  <div key={s.label} className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-mono" style={{ color: 'var(--text-primary)' }}>{s.value}</span>
+                      {s.rank && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                          #{s.rank}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
 
-          {/* Home / Away record */}
+          {/* Record breakdown */}
           <Card title="Record Breakdown">
             <div className="space-y-3">
               {[
                 { label: 'Home', value: team.homeRecord },
                 { label: 'Away', value: team.awayRecord },
-                { label: 'Last 10', value: team.last10 },
+                ...(isTeamDetail(team) ? [{ label: 'Last 10', value: team.last10 }] : []),
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between">
                   <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
                   <span className="font-bold text-mono" style={{ color: 'var(--text-primary)' }}>{row.value}</span>
                 </div>
               ))}
-              <div className="flex items-center justify-between">
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Championships</span>
-                <span className="font-bold text-mono" style={{ color: 'var(--warning)' }}>{team.championships}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Founded</span>
-                <span className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{team.founded}</span>
-              </div>
+              {/* last5 badges for basic teams */}
+              {!isTeamDetail(team) && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Last 5</span>
+                  <div className="flex gap-1">
+                    {team.last5.map((r, i) => (
+                      <span
+                        key={i}
+                        className="w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded"
+                        style={{
+                          background: r === 'W' ? 'var(--success)' : r === 'D' ? 'var(--warning)' : 'var(--danger)',
+                          color: '#fff',
+                        }}
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {isTeamDetail(team) && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Championships</span>
+                    <span className="font-bold text-mono" style={{ color: 'var(--warning)' }}>{team.championships}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Founded</span>
+                    <span className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{team.founded}</span>
+                  </div>
+                </>
+              )}
             </div>
           </Card>
         </div>
 
         {/* Middle column: advanced metrics + trend */}
         <div className="space-y-6">
-          <Card title="Advanced Metrics">
-            <div className="space-y-3.5">
-              {team.advancedMetrics.map(m => (
-                <div key={m.label}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{m.label}</span>
-                    <span
-                      className="font-semibold text-mono text-sm"
-                      style={{ color: m.positive ? 'var(--success)' : 'var(--text-primary)' }}
-                    >
-                      {m.value}
-                    </span>
+          {isTeamDetail(team) && (
+            <Card title="Advanced Metrics">
+              <div className="space-y-3.5">
+                {team.advancedMetrics.map(m => (
+                  <div key={m.label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{m.label}</span>
+                      <span
+                        className="font-semibold text-mono text-sm"
+                        style={{ color: m.positive ? 'var(--success)' : 'var(--text-primary)' }}
+                      >
+                        {m.value}
+                      </span>
+                    </div>
+                    <PercentileBar value={m.percentile} />
                   </div>
-                  <PercentileBar value={m.percentile} />
-                </div>
-              ))}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Momentum bar */}
           <Card title="Team Momentum">
@@ -216,7 +257,7 @@ export default async function TeamDetailPage({ params }: Props) {
 
         {/* Right column: AI analysis */}
         <div className="space-y-6">
-          <Card title="AI Analysis" elevated>
+          {isTeamDetail(team) && <Card title="AI Analysis" elevated>
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
@@ -274,14 +315,16 @@ export default async function TeamDetailPage({ params }: Props) {
                 </p>
               </div>
             </div>
-          </Card>
+          </Card>}
         </div>
       </div>
 
       {/* Performance trend */}
-      <Card title="Performance Trend">
-        <TeamTrendChart data={team.trendData} />
-      </Card>
+      {isTeamDetail(team) && (
+        <Card title="Performance Trend">
+          <TeamTrendChart data={team.trendData} />
+        </Card>
+      )}
 
       {/* Injuries */}
       {team.injuries.length > 0 && (
@@ -296,12 +339,14 @@ export default async function TeamDetailPage({ params }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{inj.player}</div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    {inj.position} · {inj.injury}
+                    {inj.position} · {'injury' in inj ? inj.injury : inj.detail}
                   </div>
                 </div>
                 <Badge variant={statusVariant(inj.status)}>{inj.status}</Badge>
                 <Badge variant={injuryImpactVariant(inj.impact)}>{inj.impact} Impact</Badge>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Est. Return: {inj.estimatedReturn}</div>
+                {'estimatedReturn' in inj && (
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Est. Return: {inj.estimatedReturn}</div>
+                )}
               </div>
             ))}
           </div>
@@ -309,43 +354,47 @@ export default async function TeamDetailPage({ params }: Props) {
       )}
 
       {/* Schedule */}
-      <Card title="Recent Schedule" noPad>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Opponent</th>
-              <th>Venue</th>
-              <th>Result</th>
-              <th>Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {team.schedule.map((g, i) => (
-              <tr key={i}>
-                <td className="text-mono-sm">{g.date}</td>
-                <td className="font-medium" style={{ color: 'var(--text-primary)' }}>{g.opponent}</td>
-                <td style={{ color: 'var(--text-muted)' }}>{g.home ? 'Home' : 'Away'}</td>
-                <td>
-                  {g.upcoming ? (
-                    <Badge variant="default">Upcoming</Badge>
-                  ) : (
-                    <span className="font-bold" style={{ color: g.result === 'W' ? 'var(--success)' : 'var(--danger)' }}>
-                      {g.result}
-                    </span>
-                  )}
-                </td>
-                <td className="text-mono-sm">{g.score ?? '—'}</td>
+      {isTeamDetail(team) && (
+        <Card title="Recent Schedule" noPad>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Opponent</th>
+                <th>Venue</th>
+                <th>Result</th>
+                <th>Score</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody>
+              {team.schedule.map((g, i) => (
+                <tr key={i}>
+                  <td className="text-mono-sm">{g.date}</td>
+                  <td className="font-medium" style={{ color: 'var(--text-primary)' }}>{g.opponent}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{g.home ? 'Home' : 'Away'}</td>
+                  <td>
+                    {g.upcoming ? (
+                      <Badge variant="default">Upcoming</Badge>
+                    ) : (
+                      <span className="font-bold" style={{ color: g.result === 'W' ? 'var(--success)' : 'var(--danger)' }}>
+                        {g.result}
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-mono-sm">{g.score ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       {/* Roster */}
-      <Card title="Roster" noPad>
-        <RosterTable roster={team.roster} />
-      </Card>
+      {isTeamDetail(team) && (
+        <Card title="Roster" noPad>
+          <RosterTable roster={team.roster} />
+        </Card>
+      )}
     </div>
   );
 }
