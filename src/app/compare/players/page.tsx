@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PLAYER_DETAILS } from '@/lib/playerData';
 import type { PlayerDetail } from '@/lib/playerData';
@@ -9,45 +9,97 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
 } from 'recharts';
 
-const ALL_PLAYERS = Object.values(PLAYER_DETAILS);
-const SPORT_LIST = Array.from(new Set(ALL_PLAYERS.map(p => p.sport))).sort();
-const PLAYER_SPORTS = ['All', ...SPORT_LIST];
-const SPORT_COUNTS: Record<string, number> = PLAYER_SPORTS.reduce((acc, s) => {
-  acc[s] = s === 'All' ? ALL_PLAYERS.length : ALL_PLAYERS.filter(p => p.sport === s).length;
-  return acc;
-}, {} as Record<string, number>);
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-function PlayerSelect({ value, onChange, exclude, sportFilter, id }: {
-  value: string; onChange: (v: string) => void; exclude: string; sportFilter: string; id?: string;
+interface PlayerSummary {
+  id: string;
+  name: string;
+  position: string;
+  jersey: string;
+  teamId: string;
+  teamName: string;
+  teamColor: string;
+  sport: string;
+  league: string;
+  status: string;
+}
+
+// ── Static fallback data ───────────────────────────────────────────────────────
+
+const STATIC_PLAYERS = Object.values(PLAYER_DETAILS);
+const ALL_SPORTS = ['All', 'NFL', 'NBA', 'MLB', 'NHL', 'Soccer', 'NCAA Football', 'NCAA Basketball', 'UFC', 'Boxing', 'Tennis', 'Formula 1', 'Cricket', 'Esports'];
+const ESPN_SPORTS = new Set(['NFL', 'NBA', 'MLB', 'NHL']);
+
+// Sports that use full ESPN rosters
+const SPORT_DESCRIPTIONS: Record<string, string> = {
+  NFL: '~1,800 active players',
+  NBA: '~450 active players',
+  MLB: '~750 active players',
+  NHL: '~700 active players',
+  Soccer: 'Select athletes',
+  'NCAA Football': 'Select athletes',
+  'NCAA Basketball': 'Select athletes',
+  UFC: 'Select athletes',
+  Boxing: 'Select athletes',
+  Tennis: 'Select athletes',
+  'Formula 1': 'Select athletes',
+  Cricket: 'Select athletes',
+  Esports: 'Select athletes',
+};
+
+// ── Spinner ───────────────────────────────────────────────────────────────────
+
+function Spinner() {
+  return (
+    <span className="inline-block w-4 h-4 border-2 rounded-full animate-spin"
+      style={{ borderColor: 'var(--accent) var(--accent) transparent transparent' }} />
+  );
+}
+
+// ── Player select dropdown ─────────────────────────────────────────────────────
+
+function PlayerSelect({ value, onChange, exclude, players, loading, id }: {
+  value: string;
+  onChange: (v: string) => void;
+  exclude: string;
+  players: PlayerSummary[];
+  loading: boolean;
+  id?: string;
 }) {
-  const visible = sportFilter === 'All'
-    ? ALL_PLAYERS.filter(p => p.id !== exclude)
-    : ALL_PLAYERS.filter(p => p.sport === sportFilter && p.id !== exclude);
+  const visible = players.filter(p => p.id !== exclude);
 
-  const grouped = visible.reduce<Record<string, PlayerDetail[]>>((acc, p) => {
-    acc[p.sport] = [...(acc[p.sport] ?? []), p];
+  const grouped = visible.reduce<Record<string, PlayerSummary[]>>((acc, p) => {
+    const key = p.teamName || p.sport;
+    acc[key] = [...(acc[key] ?? []), p];
     return acc;
   }, {});
+
+  const groupKeys = Object.keys(grouped).sort();
 
   return (
     <select
       id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
+      disabled={loading}
       className="w-full rounded-lg px-3 py-2 text-sm cursor-pointer outline-none"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
     >
-      <option value="">— Select player —</option>
-      {Object.entries(grouped).map(([sport, players]) => (
-        <optgroup key={sport} label={`${sport} (${players.length})`}>
-          {players.map(p => (
-            <option key={p.id} value={p.id}>{p.name} · {p.position} · {p.teamName}</option>
+      <option value="">{loading ? 'Loading roster…' : '— Select player —'}</option>
+      {groupKeys.map(group => (
+        <optgroup key={group} label={`${group} (${grouped[group].length})`}>
+          {grouped[group].map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name}{p.jersey !== '—' ? ` #${p.jersey}` : ''} · {p.position}
+            </option>
           ))}
         </optgroup>
       ))}
     </select>
   );
 }
+
+// ── Stat compare row ───────────────────────────────────────────────────────────
 
 function StatCompareRow({ label, aVal, bVal, aColor, bColor, higherBetter = true }: {
   label: string; aVal: number | string; bVal: number | string;
@@ -77,35 +129,142 @@ function StatCompareRow({ label, aVal, bVal, aColor, bColor, higherBetter = true
 
 function genPlayerComparison(a: PlayerDetail, b: PlayerDetail): string {
   if (a.sport !== b.sport) {
-    return `${a.name} (${a.sport}) and ${b.name} (${b.sport}) play different sports, making direct statistical comparison challenging. Both represent elite performers at their respective positions. ${a.name} brings ${a.experience} years of experience from ${a.college}, while ${b.name} has ${b.experience} years from ${b.college}.`;
+    return `${a.name} (${a.sport}) and ${b.name} (${b.sport}) play different sports — direct statistical comparison is challenging. ${a.name} brings ${a.experience} years of experience${a.college !== '—' ? ` from ${a.college}` : ''}, while ${b.name} has ${b.experience} years${b.college !== '—' ? ` from ${b.college}` : ''}.`;
   }
-
-  const aTop = a.advancedStats.sort((x, y) => y.percentile - x.percentile)[0];
-  const bTop = b.advancedStats.sort((x, y) => y.percentile - x.percentile)[0];
-  const aConf = a.aiProjection.confidence;
-  const bConf = b.aiProjection.confidence;
-
-  return `Both ${a.name} and ${b.name} are elite ${a.sport} players at the ${a.position} and ${b.position} positions respectively. ${a.name}'s standout advanced metric is ${aTop?.label ?? 'overall impact'} (${aTop?.percentile ?? 0}th percentile), while ${b.name} leads in ${bTop?.label ?? 'consistency'} (${bTop?.percentile ?? 0}th percentile). EdgeAI projects ${a.name} to perform at ${aConf}% model confidence in the next game, versus ${bConf}% for ${b.name}. Age differential of ${Math.abs(a.age - b.age)} years favors ${a.age < b.age ? a.name : b.name} in terms of career longevity outlook.`;
+  const aTop = [...a.advancedStats].sort((x, y) => y.percentile - x.percentile)[0];
+  const bTop = [...b.advancedStats].sort((x, y) => y.percentile - x.percentile)[0];
+  return `Both ${a.name} and ${b.name} are elite ${a.sport} players at the ${a.position} and ${b.position} positions. ${a.name}'s standout attribute is ${aTop?.label ?? 'overall impact'} (${aTop?.percentile ?? 0}th percentile), while ${b.name} leads in ${bTop?.label ?? 'consistency'} (${bTop?.percentile ?? 0}th percentile). EdgeAI projects ${a.name} at ${a.aiProjection.confidence}% model confidence vs. ${b.aiProjection.confidence}% for ${b.name}. Age differential of ${Math.abs(a.age - b.age)} years favors ${a.age < b.age ? a.name : b.name} in career longevity.`;
 }
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ComparePlayersPage() {
   const [sportFilter, setSportFilter] = useState('All');
   const [aId, setAId] = useState('');
   const [bId, setBId] = useState('');
 
-  const playerA = aId ? PLAYER_DETAILS[aId] : null;
-  const playerB = bId ? PLAYER_DETAILS[bId] : null;
+  // Dynamic roster for current sport
+  const [roster, setRoster] = useState<PlayerSummary[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
 
+  // Player detail for comparison (fetched or static)
+  const [playerA, setPlayerA] = useState<PlayerDetail | null>(null);
+  const [playerB, setPlayerB] = useState<PlayerDetail | null>(null);
+  const [detailLoadingA, setDetailLoadingA] = useState(false);
+  const [detailLoadingB, setDetailLoadingB] = useState(false);
+
+  // ── Load roster when sport changes ──────────────────────────────────────────
+  const fetchRoster = useCallback(async (sport: string) => {
+    if (sport === 'All') {
+      // Show all static players grouped by sport
+      setRoster(STATIC_PLAYERS.map(p => ({
+        id: p.id, name: p.name, position: p.position, jersey: p.number,
+        teamId: p.teamId, teamName: p.teamName, teamColor: p.teamColor,
+        sport: p.sport, league: p.sport, status: p.status,
+      })));
+      return;
+    }
+
+    setRosterLoading(true);
+    try {
+      const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}`);
+      const data = await res.json();
+      if (data.players?.length > 0) {
+        setRoster(data.players);
+      } else {
+        // Fallback to static for this sport
+        setRoster(STATIC_PLAYERS
+          .filter(p => p.sport === sport)
+          .map(p => ({
+            id: p.id, name: p.name, position: p.position, jersey: p.number,
+            teamId: p.teamId, teamName: p.teamName, teamColor: p.teamColor,
+            sport: p.sport, league: p.sport, status: p.status,
+          })));
+      }
+    } catch {
+      setRoster(STATIC_PLAYERS
+        .filter(p => p.sport === sport)
+        .map(p => ({
+          id: p.id, name: p.name, position: p.position, jersey: p.number,
+          teamId: p.teamId, teamName: p.teamName, teamColor: p.teamColor,
+          sport: p.sport, league: p.sport, status: p.status,
+        })));
+    } finally {
+      setRosterLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRoster(sportFilter);
+  }, [sportFilter, fetchRoster]);
+
+  // ── Fetch player detail ──────────────────────────────────────────────────────
+  const fetchDetail = useCallback(async (
+    id: string,
+    sport: string,
+    rosterRef: PlayerSummary[],
+    setPlayer: (p: PlayerDetail | null) => void,
+    setLoading: (b: boolean) => void,
+  ) => {
+    if (!id) { setPlayer(null); return; }
+
+    // Static player
+    if (PLAYER_DETAILS[id]) {
+      setPlayer(PLAYER_DETAILS[id]);
+      return;
+    }
+
+    // ESPN player
+    if (id.startsWith('espn-') && ESPN_SPORTS.has(sport)) {
+      const espnId = id.replace('espn-', '');
+      const rosterEntry = rosterRef.find(p => p.id === id);
+      const teamName = rosterEntry?.teamName ?? '';
+      const teamColor = rosterEntry?.teamColor ?? '';
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ id: espnId, sport });
+        if (teamName) params.set('teamName', teamName);
+        if (teamColor) params.set('teamColor', teamColor);
+        const res = await fetch(`/api/espn/athlete?${params}`);
+        const data = await res.json();
+        if (data.player) setPlayer(data.player);
+        else setPlayer(null);
+      } catch {
+        setPlayer(null);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    setPlayer(null);
+  }, []);
+
+  // Derive sport for detail fetch from current roster
+  const sportForId = useCallback((id: string): string => {
+    if (sportFilter !== 'All') return sportFilter;
+    const p = roster.find(r => r.id === id);
+    return p?.sport ?? '';
+  }, [sportFilter, roster]);
+
+  useEffect(() => {
+    fetchDetail(aId, sportForId(aId), roster, setPlayerA, setDetailLoadingA);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aId]);
+
+  useEffect(() => {
+    fetchDetail(bId, sportForId(bId), roster, setPlayerB, setDetailLoadingB);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bId]);
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
   const radarData = useMemo(() => {
     if (!playerA || !playerB) return [];
-    // Merge radar keys
     const keysA = new Set(playerA.radarData.map(r => r.metric));
     const keysB = new Set(playerB.radarData.map(r => r.metric));
     const shared = [...keysA].filter(k => keysB.has(k));
     if (shared.length < 3) {
-      // Fall back to first 5 from A padded with B
-      const aMetrics = playerA.radarData.slice(0, 5);
-      return aMetrics.map(r => ({
+      return playerA.radarData.slice(0, 6).map(r => ({
         axis: r.metric,
         [playerA.name]: r.value,
         [playerB.name]: playerB.radarData.find(x => x.metric === r.metric)?.value ?? 50,
@@ -120,35 +279,35 @@ export default function ComparePlayersPage() {
 
   const seasonBarData = useMemo(() => {
     if (!playerA || !playerB) return [];
-    // Compare first 4 season stats that both share
     const aKeys = playerA.seasonStats.map(s => s.label);
     const bKeys = playerB.seasonStats.map(s => s.label);
-    const shared = aKeys.filter(k => bKeys.includes(k)).slice(0, 5);
+    const shared = aKeys.filter(k => bKeys.includes(k)).slice(0, 6);
     return shared.map(k => ({
       name: k,
-      [playerA.name.split(' ')[1]]: parseFloat(String(playerA.seasonStats.find(s => s.label === k)!.value)) || 0,
-      [playerB.name.split(' ')[1]]: parseFloat(String(playerB.seasonStats.find(s => s.label === k)!.value)) || 0,
+      [playerA.name.split(' ').pop()!]: parseFloat(String(playerA.seasonStats.find(s => s.label === k)!.value)) || 0,
+      [playerB.name.split(' ').pop()!]: parseFloat(String(playerB.seasonStats.find(s => s.label === k)!.value)) || 0,
     }));
   }, [playerA, playerB]);
 
   const comparison = playerA && playerB ? genPlayerComparison(playerA, playerB) : '';
-
   const colorA = playerA?.teamColor ?? '#3b82f6';
   const colorB = playerB?.teamColor ?? '#10b981';
+
+  const rosterCount = roster.length;
 
   return (
     <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-8 space-y-8" style={{ color: 'var(--text-primary)' }}>
       <div>
         <h1 className="text-2xl font-bold">Player Comparison</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Head-to-head analytics — career, season, advanced metrics
+          Head-to-head analytics — full rosters, live stats, career &amp; season metrics
         </p>
       </div>
 
       {/* Sport filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {PLAYER_SPORTS.map(s => (
-          <button key={s} onClick={() => setSportFilter(s)}
+        {ALL_SPORTS.map(s => (
+          <button key={s} onClick={() => { setSportFilter(s); setAId(''); setBId(''); }}
             className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
             style={{
               background: sportFilter === s ? 'var(--accent)' : 'var(--bg-card)',
@@ -156,7 +315,9 @@ export default function ComparePlayersPage() {
               border: `1px solid ${sportFilter === s ? 'var(--accent)' : 'var(--border-default)'}`,
             }}>
             {s}
-            <span className="text-[10px] opacity-70">{SPORT_COUNTS[s]}</span>
+            {s !== 'All' && ESPN_SPORTS.has(s) && (
+              <span className="text-[10px] opacity-70">Full</span>
+            )}
           </button>
         ))}
       </div>
@@ -164,54 +325,111 @@ export default function ComparePlayersPage() {
       {/* Selectors */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="player-a-select" className="block text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Player A</label>
-          <PlayerSelect id="player-a-select" value={aId} onChange={setAId} exclude={bId} sportFilter={sportFilter} />
+          <label htmlFor="player-a-select" className="flex items-center gap-2 text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+            Player A
+            {detailLoadingA && <Spinner />}
+          </label>
+          <PlayerSelect
+            id="player-a-select"
+            value={aId}
+            onChange={setAId}
+            exclude={bId}
+            players={roster}
+            loading={rosterLoading}
+          />
         </div>
         <div>
-          <label htmlFor="player-b-select" className="block text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Player B</label>
-          <PlayerSelect id="player-b-select" value={bId} onChange={setBId} exclude={aId} sportFilter={sportFilter} />
+          <label htmlFor="player-b-select" className="flex items-center gap-2 text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+            Player B
+            {detailLoadingB && <Spinner />}
+          </label>
+          <PlayerSelect
+            id="player-b-select"
+            value={bId}
+            onChange={setBId}
+            exclude={aId}
+            players={roster}
+            loading={rosterLoading}
+          />
         </div>
       </div>
 
+      {/* Roster info bar */}
+      {sportFilter !== 'All' && (
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-xs"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-muted)' }}>
+          {rosterLoading ? (
+            <><Spinner /><span>Loading {sportFilter} roster…</span></>
+          ) : (
+            <>
+              <span className="font-semibold" style={{ color: 'var(--accent)' }}>{rosterCount.toLocaleString()}</span>
+              <span>{sportFilter} players loaded</span>
+              {ESPN_SPORTS.has(sportFilter) && (
+                <span className="ml-auto px-2 py-0.5 rounded-full text-[10px]"
+                  style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--accent)' }}>
+                  Live ESPN Roster
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* Empty state */}
-      {(!playerA || !playerB) && (
+      {!playerA && !playerB && !detailLoadingA && !detailLoadingB && (
         <div className="rounded-2xl p-10 text-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
           <p className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
             Select two players to compare
           </p>
           <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-            {SPORT_LIST.length} sports · {ALL_PLAYERS.length} athletes — filter by sport above, then pick two players
+            Full rosters from ESPN for NFL, NBA, MLB, NHL · Select athletes for all other sports
           </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {SPORT_LIST.map(s => (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
+            {['NFL', 'NBA', 'MLB', 'NHL'].map(s => (
               <button key={s} onClick={() => setSportFilter(s)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors"
-                style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                {s} · {SPORT_COUNTS[s]}
+                className="rounded-xl px-4 py-3 text-left cursor-pointer transition-colors"
+                style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{s}</p>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--accent)' }}>{SPORT_DESCRIPTIONS[s]}</p>
               </button>
             ))}
           </div>
         </div>
       )}
 
+      {/* Loading detail state */}
+      {(detailLoadingA || detailLoadingB) && (
+        <div className="rounded-xl p-8 flex items-center justify-center gap-3"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+          <Spinner />
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Fetching player stats from ESPN…
+          </span>
+        </div>
+      )}
+
       {playerA && playerB && (
         <>
-          {/* Header */}
+          {/* Header cards */}
           <div className="grid sm:grid-cols-2 gap-4">
             {[{ p: playerA, color: colorA }, { p: playerB, color: colorB }].map(({ p, color }) => (
-              <Link key={p.id} href={`/player/${p.id}`}
-                className="rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+              <div key={p.id}
+                className="rounded-2xl p-5 flex items-center gap-4"
                 style={{ background: 'var(--bg-card)', border: `2px solid ${color}44` }}>
                 <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
                   style={{ background: `${color}22`, color }}>
-                  {p.number}
+                  {p.number !== '—' ? p.number : p.position}
                 </div>
                 <div className="min-w-0">
                   <p className="font-bold text-lg truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{p.position} · {p.teamName}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Age {p.age} · {p.experience} yr exp · {p.status}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Age {p.age} · {p.experience} yr exp
+                    {p.college && p.college !== '—' ? ` · ${p.college}` : ''}
+                    {' · '}<span style={{ color: p.status === 'Active' ? '#22c55e' : '#f59e0b' }}>{p.status}</span>
+                  </p>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 
@@ -238,10 +456,10 @@ export default function ComparePlayersPage() {
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={seasonBarData} layout="vertical" barSize={12} barGap={3}>
                     <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-                    <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} width={65} />
+                    <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} width={80} />
                     <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 8 }} />
-                    <Bar dataKey={playerA.name.split(' ')[1]} fill={colorA} radius={[0, 4, 4, 0]} />
-                    <Bar dataKey={playerB.name.split(' ')[1]} fill={colorB} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey={playerA.name.split(' ').pop()!} fill={colorA} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey={playerB.name.split(' ').pop()!} fill={colorB} radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -258,16 +476,45 @@ export default function ComparePlayersPage() {
               <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <div className="flex items-center mb-4">
                   <p className="flex-1 text-right text-sm font-bold pr-8" style={{ color: colorA }}>{playerA.name.split(' ').pop()}</p>
-                  <p className="w-32 text-center text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Career Stat</p>
+                  <p className="w-36 text-center text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Career Stat</p>
                   <p className="flex-1 text-left text-sm font-bold pl-8" style={{ color: colorB }}>{playerB.name.split(' ').pop()}</p>
                 </div>
                 <table className="w-full">
                   <tbody>
-                    {shared.slice(0, 6).map(k => (
+                    {shared.map(k => (
                       <StatCompareRow
                         key={k} label={k}
                         aVal={playerA.careerStats.find(s => s.label === k)!.value}
                         bVal={playerB.careerStats.find(s => s.label === k)!.value}
+                        aColor={colorA} bColor={colorB}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
+          {/* Season stats comparison — full row */}
+          {(() => {
+            const aKeys = playerA.seasonStats.map(s => s.label);
+            const bKeys = playerB.seasonStats.map(s => s.label);
+            const shared = aKeys.filter(k => bKeys.includes(k));
+            if (shared.length === 0) return null;
+            return (
+              <div className="rounded-xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <div className="flex items-center mb-4">
+                  <p className="flex-1 text-right text-sm font-bold pr-8" style={{ color: colorA }}>{playerA.name.split(' ').pop()}</p>
+                  <p className="w-36 text-center text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>2024 Season</p>
+                  <p className="flex-1 text-left text-sm font-bold pl-8" style={{ color: colorB }}>{playerB.name.split(' ').pop()}</p>
+                </div>
+                <table className="w-full">
+                  <tbody>
+                    {shared.map(k => (
+                      <StatCompareRow
+                        key={k} label={k}
+                        aVal={playerA.seasonStats.find(s => s.label === k)!.value}
+                        bVal={playerB.seasonStats.find(s => s.label === k)!.value}
                         aColor={colorA} bColor={colorB}
                       />
                     ))}
@@ -283,12 +530,12 @@ export default function ComparePlayersPage() {
               <div key={p.id} className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <p className="text-sm font-semibold" style={{ color }}>{p.name} — Advanced</p>
                 <div className="space-y-2">
-                  {p.advancedStats.slice(0, 5).map(s => (
+                  {p.advancedStats.map(s => (
                     <div key={s.label} className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
                         <div className="mt-0.5 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-                          <div style={{ width: `${s.percentile}%`, background: color, height: '100%' }} />
+                          <div style={{ width: `${Math.min(100, s.percentile)}%`, background: color, height: '100%' }} />
                         </div>
                       </div>
                       <span className="text-xs font-mono w-10 text-right" style={{ color: 'var(--text-secondary)' }}>
@@ -313,7 +560,7 @@ export default function ComparePlayersPage() {
             {[{ p: playerA, color: colorA }, { p: playerB, color: colorB }].map(({ p, color }) => (
               <div key={p.id} className="rounded-xl p-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold" style={{ color }}>{`${p.name.split(' ')[0]}'s Next Game`}</p>
+                  <p className="text-sm font-semibold" style={{ color }}>{`${p.name.split(' ')[0]}'s Projection`}</p>
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${color}18`, color }}>
                     {p.aiProjection.confidence}% confidence
                   </span>
@@ -326,6 +573,16 @@ export default function ComparePlayersPage() {
                     </div>
                   ))}
                 </div>
+                {p.aiProjection.factors.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {p.aiProjection.factors.slice(0, 3).map(f => (
+                      <span key={f} className="text-[10px] px-2 py-0.5 rounded-full"
+                        style={{ background: `${color}12`, color }}>
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
