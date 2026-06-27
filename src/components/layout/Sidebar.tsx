@@ -33,6 +33,21 @@ const V3_NAV = [
   { href: '/tournament/worldcup2026', label: 'Tournaments', Icon: ListVideo },
 ];
 
+const SPORTS_MODULES = [
+  { href: '/nba',     label: 'NBA',     emoji: '🏀' },
+  { href: '/mlb',     label: 'MLB',     emoji: '⚾' },
+  { href: '/nhl',     label: 'NHL',     emoji: '🏒' },
+  { href: '/soccer',  label: 'Soccer',  emoji: '⚽' },
+  { href: '/ncaaf',   label: 'NCAAF',   emoji: '🏈' },
+  { href: '/ncaab',   label: 'NCAAB',   emoji: '🏀' },
+  { href: '/ufc',     label: 'UFC',     emoji: '🥊' },
+  { href: '/boxing',  label: 'Boxing',  emoji: '🥊' },
+  { href: '/tennis',  label: 'Tennis',  emoji: '🎾' },
+  { href: '/f1',      label: 'Formula 1', emoji: '🏎️' },
+  { href: '/cricket', label: 'Cricket', emoji: '🏏' },
+  { href: '/esports', label: 'Esports', emoji: '🎮' },
+];
+
 const BOTTOM_NAV = [
   { href: '/settings',      label: 'Settings', Icon: SlidersHorizontal },
   { href: '/admin',         label: 'Admin',    Icon: Settings },
@@ -161,6 +176,40 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
               onClick={onClose}
             />
           ))}
+
+          {/* Sports Modules section */}
+          {!collapsed && (
+            <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+              Sport Modules
+            </p>
+          )}
+          {collapsed && <div className="my-2 border-t" style={{ borderColor: 'var(--border-subtle)' }} />}
+          {SPORTS_MODULES.map((item) => {
+            const isAct = active(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                title={collapsed ? item.label : undefined}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg transition-all duration-150',
+                  collapsed ? 'h-9 w-9 justify-center mx-auto' : 'h-9 px-2.5',
+                )}
+                style={{
+                  background: isAct ? 'var(--accent-dim)' : 'transparent',
+                  color: isAct ? 'var(--accent-light)' : 'var(--text-muted)',
+                  borderLeft: !collapsed && isAct ? '2px solid var(--accent)' : '2px solid transparent',
+                  paddingLeft: !collapsed && isAct ? '9px' : undefined,
+                }}
+                onMouseEnter={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+                onMouseLeave={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              >
+                <span className="text-sm shrink-0">{item.emoji}</span>
+                {!collapsed && <span className="text-sm font-medium truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Divider */}
