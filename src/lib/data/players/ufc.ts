@@ -1,0 +1,88 @@
+import { mkp } from './builder';
+import type { PlayerDetail } from '@/lib/playerData';
+
+export const UFC_PLAYERS: Record<string, PlayerDetail> = {
+'ufc-islam': mkp('ufc-islam','Islam Makhachev','LW','','ufc-lw','UFC Lightweight','#D20A0A',
+  'UFC',33,10,'UFC Lightweight champion — Khabib\'s heir, dominant wrestler with sharp striking, unbeaten at top level.',
+  [['Record','27-1'],['KOs',5],['Submissions',11],['Decision Wins',11],['Title Defenses',5],['Win Streak',14]],
+  [['Last Fight','Dec 2024'],['Opponent','Poirier'],['Result','Win-Sub'],['Round',3],['TD Acc%','68%'],['SLpm','4.2']],
+  [['Wrestling',99],['BJJ',92],['Striking',84],['Clinch',94],['Defense',96],['Conditioning',92]],90,
+  [['Win Prob','80-90%'],['Method','Decision or Submission'],['Rounds','3-5'],['TD Acc','60-70%']]),
+
+'ufc-dvalishvili': mkp('ufc-dvalishvili','Merab Dvalishvili','BW','','ufc-bw','UFC Bantamweight','#D20A0A',
+  'UFC',33,9,'UFC Bantamweight champion — relentless cardio machine with elite wrestling and takedown frequency.',
+  [['Record','18-4'],['KOs',2],['Submissions',3],['Decision Wins',13],['Title Defenses',1],['Win Streak',9]],
+  [['Last Fight','Sep 2024'],['Opponent','O\'Malley'],['Result','Win-Dec'],['Round',5],['TD Avg','10.6/15m'],['Strikes','128/m']],
+  [['Wrestling',96],['Cardio',99],['Striking',78],['Clinch',92],['Defense',82],['Pressure',98]],86,
+  [['Win Prob','68-78%'],['Method','Decision'],['Rounds','5'],['TDs','8-15']]),
+
+'ufc-poatan': mkp('ufc-poatan','Alex Pereira','LHW','','ufc-lhw','UFC Light Heavyweight','#D20A0A',
+  'UFC',37,7,'4× combat sports world champion — undisputed kickboxing legend who dominated MMA rapidly.',
+  [['Record','10-2'],['KOs',7],['Submissions',0],['Decision Wins',3],['Belts',4],['KO Streak',5]],
+  [['Last Fight','Jun 2025'],['Opponent','Ankalaev'],['Result','Win-KO'],['Round',1],['Sig Strikes','5.8/m'],['KO Power','Elite']],
+  [['Striking',99],['KO Power',99],['Kickboxing',99],['Wrestling',60],['Defense',78],['Chin',82]],88,
+  [['Win Prob','70-80%'],['Method','KO/TKO'],['Round','1-3'],['Sig Strikes/m','5-7']]),
+
+'ufc-jones': mkp('ufc-jones','Jon Jones','HW','','ufc-hw','UFC Heavyweight','#D20A0A',
+  'UFC',37,18,'Widely considered the GOAT — longest reigning LHW champion, unbeaten in regulated competition.',
+  [['Record','27-1 NC'],['KOs',10],['Submissions',6],['Decision Wins',11],['Title Defenses',14],['Win Streak',4]],
+  [['Last Fight','Mar 2024'],['Opponent','Stipe'],['Result','Win-KO'],['Round',1],['Reach','84.5 in'],['Ctrl %','62%']],
+  [['Striking',92],['Wrestling',92],['BJJ',88],['IQ',99],['Reach',96],['Durability',94]],84,
+  [['Win Prob','72-82%'],['Method','TKO or Decision'],['Round','1-5'],['Ctrl %','55-70%']]),
+
+'ufc-aspinall': mkp('ufc-aspinall','Tom Aspinall','HW','','ufc-hw','UFC Heavyweight','#D20A0A',
+  'UFC',31,6,'Interim Heavyweight champion and the hardest-hitting HW in the sport today.',
+  [['Record','15-3'],['KOs',11],['Submissions',2],['Decision Wins',2],['Avg Finish','1:08'],['Win Streak',6]],
+  [['Last Fight','Nov 2023'],['Opponent','Blaydes'],['Result','Win-KO'],['Round',1],['Sig Strikes','7.1/m'],['Pace','Elite']],
+  [['Striking',96],['KO Power',97],['Wrestling',82],['BJJ',82],['Speed',90],['Durability',78]],86,
+  [['Win Prob','68-78%'],['Method','KO/TKO'],['Round','1-2'],['Sig Strikes/m','6-8']]),
+
+'ufc-omalley': mkp('ufc-omalley','Sean O\'Malley','BW','','ufc-bw','UFC Bantamweight','#D20A0A',
+  'UFC',30,7,'Former Bantamweight champion — unorthodox striker and MMA\'s biggest box office star.',
+  [['Record','18-2'],['KOs',11],['Submissions',1],['Decision Wins',6],['Title Defenses',2],['Win Streak',5]],
+  [['Last Fight','Sep 2024'],['Opponent','Dvalishvili'],['Result','Loss-Dec'],['Round',5],['Sig Strikes','5.4/m'],['KD',8]],
+  [['Striking',94],['KO Power',92],['Boxing',92],['Wrestling',58],['Defense',76],['Entertainment',99]],72,
+  [['Win Prob','50-60%'],['Method','KO or Decision'],['Round','1-5'],['KD Avg','0.8/fight']]),
+
+'ufc-adesanya': mkp('ufc-adesanya','Israel Adesanya','MW','','ufc-mw','UFC Middleweight','#D20A0A',
+  'UFC',35,10,'2× UFC Middleweight champion — elite kickboxer with elite movement and counterpunching.',
+  [['Record','24-3'],['KOs',15],['Submissions',0],['Decision Wins',9],['Title Defenses',7],['Sig Strikes/m','4.8']],
+  [['Last Fight','Sep 2023'],['Opponent','Strickland'],['Result','Loss-Dec'],['Round',5],['Sig Strikes','4.6/m'],['TD Def%','82%']],
+  [['Striking',96],['Kickboxing',96],['Footwork',96],['Wrestling',58],['Defense',88],['IQ',94]],75,
+  [['Win Prob','62-72%'],['Method','Decision or KO'],['Round','1-5'],['Sig Strikes/m','4.5-5.5']]),
+
+'ufc-mcgregor': mkp('ufc-mcgregor','Conor McGregor','LW','','ufc-lw','UFC Lightweight','#D20A0A',
+  'UFC',37,14,'2× UFC champion (simultaneous) — left hook knockout artist and global MMA superstar.',
+  [['Record','22-6'],['KOs',19],['Submissions',1],['Decision Wins',2],['Title Defenses',1],['Win Streak',0]],
+  [['Last Fight','Jun 2021'],['Opponent','Poirier'],['Result','Loss-TKO'],['Round',3],['Power KO%','86%'],['Reach','74 in']],
+  [['Boxing',98],['KO Power',97],['Footwork',88],['Wrestling',56],['Defense',74],['Mental',90]],62,
+  [['Win Prob','52-65%'],['Method','KO or TKO'],['Round','1-3'],['Sig Strikes/m','5-7']]),
+
+'ufc-makhachev-a': mkp('ufc-makhachev-a','Arman Tsarukyan','LW','','ufc-lw','UFC Lightweight','#D20A0A',
+  'UFC',27,6,'#1 Lightweight contender — well-rounded fighter who tested Islam early in both men\'s careers.',
+  [['Record','22-3'],['KOs',6],['Submissions',7],['Decision Wins',9],['Win Streak',5],['Sig Strikes','4.8/m']],
+  [['Last Fight','Jul 2024'],['Opponent','Dariush'],['Result','Win-Dec'],['Round',5],['TD Acc%','44%'],['SLpm','4.9']],
+  [['Striking',86],['Wrestling',86],['BJJ',84],['Cardio',92],['Defense',84],['Pressure',88]],82,
+  [['Win Prob','58-68%'],['Method','Decision or Submission'],['Rounds','3-5'],['TDs','3-6']]),
+
+'ufc-pantoja': mkp('ufc-pantoja','Alexandre Pantoja','FLW','','ufc-flw','UFC Flyweight','#D20A0A',
+  'UFC',34,11,'UFC Flyweight champion — precise BJJ and clever striking, most complete flyweight ever.',
+  [['Record','28-5'],['KOs',3],['Submissions',10],['Decision Wins',15],['Title Defenses',3],['Win Streak',5]],
+  [['Last Fight','Feb 2025'],['Opponent','Kape'],['Result','Win-Sub'],['Round',2],['Sub Avg','0.8/fight'],['SLpm','3.8']],
+  [['BJJ',96],['Wrestling',88],['Striking',82],['Defense',86],['Cardio',90],['IQ',90]],85,
+  [['Win Prob','72-82%'],['Method','Submission or Decision'],['Round','2-5'],['Sub Rate','0.6-1.0/fight']]),
+
+'ufc-holloway': mkp('ufc-holloway','Max Holloway','FW','','ufc-fw','UFC Featherweight','#D20A0A',
+  'UFC',33,13,'BMF champion — volume striker with the best chin in the sport, all-time great record.',
+  [['Record','25-7'],['KOs',12],['Submissions',2],['Decision Wins',11],['Title Defenses',3],['Sig Strikes/m','7.8']],
+  [['Last Fight','Apr 2024'],['Opponent','Gaethje'],['Result','Win-KO'],['Round',5],['Sig Strikes','7.4/m'],['KD','0.7/fight']],
+  [['Striking',94],['Volume',98],['Chin',96],['Wrestling',70],['Cardio',96],['IQ',88]],84,
+  [['Win Prob','60-72%'],['Method','Decision or Late KO'],['Round','3-5'],['Sig Strikes/m','7-9']]),
+
+'ufc-poirier': mkp('ufc-poirier','Dustin Poirier','LW','','ufc-lw','UFC Lightweight','#D20A0A',
+  'UFC',36,15,'Diamond — beloved veteran with elite finishing and the best left hand in the sport.',
+  [['Record','30-9 NC'],['KOs',14],['Submissions',7],['Decision Wins',9],['Title Shots',3],['Sig Strikes/m','5.2']],
+  [['Last Fight','Dec 2024'],['Opponent','Islam'],['Result','Loss-Sub'],['Round',3],['TDs Def','62%'],['SLpm','5.0']],
+  [['Boxing',92],['KO Power',90],['BJJ',82],['Wrestling',74],['Chin',88],['Heart',98]],75,
+  [['Win Prob','50-62%'],['Method','KO or Submission'],['Round','1-5'],['Sig Strikes/m','4.5-5.5']]),
+};

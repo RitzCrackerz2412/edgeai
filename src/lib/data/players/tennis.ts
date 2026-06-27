@@ -1,0 +1,88 @@
+import { mkp } from './builder';
+import type { PlayerDetail } from '@/lib/playerData';
+
+export const TENNIS_PLAYERS: Record<string, PlayerDetail> = {
+'ten-djokovic': mkp('ten-djokovic','Novak Djokovic','M','1','srv-serbia','Serbia','#C6363C',
+  'Tennis',38,22,'24 Grand Slams — statistically the greatest player of all time, relentless baseline warrior.',
+  [['Grand Slams',24],['Titles',99],['Win%','83%'],['Masters',40],['ATP No.1 Weeks',428]],
+  [['Ranking',3],['Titles 2024',1],['GS 2024','Olympic Gold'],['Win%','76%'],['Aces/Match',4.2]],
+  [['Return',99],['Movement',96],['Baseline',98],['Mental',99],['Fitness',94],['Serve',86]],80,
+  [['Win Prob vs Top10','62-72%'],['GS Titles','0-2'],['Titles','3-6'],['Win%','72-80%']]),
+
+'ten-alcaraz': mkp('ten-alcaraz','Carlos Alcaraz','M','3','esp-spain','Spain','#C60B1E',
+  'Tennis',22,5,'4 Grand Slams at age 21 — most complete player in men\'s game, extraordinary talent.',
+  [['Grand Slams',4],['Titles',17],['Win%','79%'],['Masters',4],['ATP Rankings','Career #1']],
+  [['Ranking',3],['Titles 2024',3],['GS 2024',2],['Win%','80%'],['Aces/Match',7.6]],
+  [['Forehand',99],['Movement',96],['Return',90],['Net Play',88],['Serve',88],['Clutch',92]],88,
+  [['Win Prob vs Top10','68-78%'],['GS Titles','1-2'],['Titles','4-8'],['Win%','76-84%']]),
+
+'ten-sinner': mkp('ten-sinner','Jannik Sinner','M','1','ita-italy','Italy','#009246',
+  'Tennis',24,6,'2024 World No.1 — back-to-back Australian Open champion, elite baseline consistency.',
+  [['Grand Slams',3],['Titles',24],['Win%','77%'],['Masters',2],['ATP No.1 Weeks',48]],
+  [['Ranking',1],['Titles 2024',5],['GS 2024',2],['Win%','86%'],['Aces/Match',6.4]],
+  [['Forehand',96],['Backhand',96],['Movement',92],['Return',94],['Serve',86],['Consistency',96]],90,
+  [['Win Prob vs Top10','70-80%'],['GS Titles','1-2'],['Titles','5-8'],['Win%','80-88%']]),
+
+'ten-zverev': mkp('ten-zverev','Alexander Zverev','M','2','deu-germany','Germany','#000000',
+  'Tennis',28,10,'2× ATP Finals champion — devastating serve and improving consistency at Slams.',
+  [['Grand Slams',0],['Titles',24],['Win%','72%'],['Masters',7],['Olympic Gold',1]],
+  [['Ranking',2],['Titles 2024',3],['GS 2024','RU RG'],['Win%','78%'],['Aces/Match',9.8]],
+  [['Serve',92],['Forehand',88],['Backhand',86],['Movement',84],['Return',80],['Clutch',78]],81,
+  [['Win Prob vs Top10','58-70%'],['GS Titles','0-1'],['Titles','3-5'],['Win%','72-80%']]),
+
+'ten-medvedev': mkp('ten-medvedev','Daniil Medvedev','M','5','rus-russia','Russia','#D52B1E',
+  'Tennis',29,9,'2021 US Open champion — unconventional but elite: bizarre movement and relentless fighting spirit.',
+  [['Grand Slams',1],['Titles',21],['Win%','71%'],['Masters',4],['Finals',7]],
+  [['Ranking',5],['Titles 2024',2],['GS 2024','SF US Open'],['Win%','70%'],['Return%','44%']],
+  [['Return',88],['Fighting Spirit',96],['Defense',92],['Backhand',86],['Serve',84],['Clutch',80]],79,
+  [['Win Prob vs Top10','54-66%'],['GS Titles','0-1'],['Titles','2-4'],['Win%','68-76%']]),
+
+'ten-rublev': mkp('ten-rublev','Andrey Rublev','M','6','rus-russia','Russia','#D52B1E',
+  'Tennis',27,8,'One of the hardest-hitting baseliners on tour — multiple Masters titles, consistent top-10.',
+  [['Grand Slams',0],['Titles',18],['Win%','69%'],['Masters',2],['Top10 Years',5]],
+  [['Ranking',7],['Titles 2024',2],['GS 2024','QF AO'],['Win%','67%'],['Aces/Match',5.8]],
+  [['Forehand',94],['Speed',88],['Aggression',90],['Return',80],['Serve',80],['Consistency',80]],76,
+  [['Win Prob vs Top10','48-60%'],['GS Titles','0'],['Titles','2-4'],['Win%','65-72%']]),
+
+'ten-swiatek': mkp('ten-swiatek','Iga Świątek','W','1','pol-poland','Poland','#E62B1E',
+  'Tennis',24,7,'Dominant WTA No.1 — 4× French Open champion, extraordinary clay court mastery.',
+  [['Grand Slams',5],['Titles',23],['Win%','85%'],['WTA No.1 Weeks',120],['Clay Win%','93%']],
+  [['Ranking',2],['Titles 2024',2],['GS 2024',1],['Win%','78%'],['Aces/Match',2.4]],
+  [['Forehand',99],['Movement',96],['Return',96],['Mental',94],['Clay',99],['Consistency',94]],86,
+  [['Win Prob vs Top10','72-82%'],['GS Titles','1-2'],['FO Titles','1'],['Win%','78-86%']]),
+
+'ten-sabalenka': mkp('ten-sabalenka','Aryna Sabalenka','W','1','blr-belarus','Belarus','#CF101A',
+  'Tennis',27,9,'2× Australian Open champion — biggest serve in women\'s game with explosive groundstrokes.',
+  [['Grand Slams',3],['Titles',18],['Win%','79%'],['WTA No.1 Weeks',68],['Aces/Season',280]],
+  [['Ranking',1],['Titles 2024',4],['GS 2024',2],['Win%','82%'],['Aces/Match',5.8]],
+  [['Serve',97],['Forehand',94],['Aggression',92],['Return',82],['Consistency',86],['Clutch',88]],88,
+  [['Win Prob vs Top10','68-78%'],['GS Titles','1-2'],['Titles','4-6'],['Win%','78-86%']]),
+
+'ten-gauff': mkp('ten-gauff','Coco Gauff','W','3','usa-united-states','United States','#002868',
+  'Tennis',21,5,'2023 US Open champion — elite returner with exceptional athleticism and intelligence.',
+  [['Grand Slams',2],['Titles',12],['Win%','73%'],['WTA No.1 Weeks',8],['Return%','47%']],
+  [['Ranking',3],['Titles 2024',3],['GS 2024','SF FO'],['Win%','74%'],['Break%','38%']],
+  [['Return',92],['Movement',90],['Backhand',86],['Serve',80],['Mental',86],['Upside',94]],83,
+  [['Win Prob vs Top10','60-72%'],['GS Titles','0-1'],['Titles','3-5'],['Win%','70-78%']]),
+
+'ten-rybakina': mkp('ten-rybakina','Elena Rybakina','W','4','kaz-kazakhstan','Kazakhstan','#00AFCA',
+  'Tennis',26,7,'2022 Wimbledon champion — towering serve and aggressive all-court game.',
+  [['Grand Slams',1],['Titles',14],['Win%','74%'],['Wimbledon',1],['Aces/Season',260]],
+  [['Ranking',4],['Titles 2024',2],['GS 2024','F AO'],['Win%','72%'],['Aces/Match',6.4]],
+  [['Serve',98],['Forehand',88],['Net Play',84],['Return',82],['Clutch',82],['Grass',96]],82,
+  [['Win Prob vs Top10','60-72%'],['GS Titles','0-1'],['Titles','2-4'],['Win%','68-76%']]),
+
+'ten-federer': mkp('ten-federer','Roger Federer','M','—','sui-switzerland','Switzerland','#FF0000',
+  'Tennis',43,24,'20 Grand Slams — The greatest champion in tennis history, artistry personified.',
+  [['Grand Slams',20],['Titles',103],['Win%','82%'],['Wimbledon',8],['ATP No.1 Weeks',310]],
+  [['Last Match','Sep 2022'],['Final Match','Laver Cup'],['Career Titles',103],['GS Finals',31],['Aces Career',11478]],
+  [['Serve',96],['Forehand',99],['Footwork',98],['Net Play',96],['Elegance',99],['Legacy',99]],0,
+  [['Status','Retired'],['Legacy','All-Time Great'],['Wimbledon Titles','8'],['ATP Titles','103']]),
+
+'ten-nadal': mkp('ten-nadal','Rafael Nadal','M','—','esp-spain','Spain','#C60B1E',
+  'Tennis',38,22,'22 Grand Slams, 14× French Open — King of Clay, most relentless competitor in tennis.',
+  [['Grand Slams',22],['Titles',92],['Win%','83%'],['FO Titles',14],['Clay Win%','92%']],
+  [['Last Match','Nov 2024'],['Final Match','Davis Cup'],['Career Titles',92],['GS Finals',30],['FO Record','112-4']],
+  [['Forehand',99],['Clay',99],['Mental',99],['Defense',96],['Serve',84],['Legacy',99]],0,
+  [['Status','Retired'],['Legacy','All-Time Great'],['FO Titles','14'],['ATP Titles','92']]),
+};

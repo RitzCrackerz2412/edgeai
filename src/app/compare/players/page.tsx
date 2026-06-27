@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { PLAYER_DETAILS } from '@/lib/playerData';
 import type { PlayerDetail } from '@/lib/playerData';
@@ -56,46 +56,126 @@ function Spinner() {
   );
 }
 
-// ── Player select dropdown ─────────────────────────────────────────────────────
+// ── Player search with autocomplete ───────────────────────────────────────────
 
-function PlayerSelect({ value, onChange, exclude, players, loading, id }: {
+function PlayerSearch({ value, onChange, exclude, players, loading, label }: {
   value: string;
   onChange: (v: string) => void;
   exclude: string;
   players: PlayerSummary[];
   loading: boolean;
-  id?: string;
+  label: string;
 }) {
-  const visible = players.filter(p => p.id !== exclude);
+  const selected = players.find(p => p.id === value) ?? null;
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const grouped = visible.reduce<Record<string, PlayerSummary[]>>((acc, p) => {
-    const key = p.teamName || p.sport;
-    acc[key] = [...(acc[key] ?? []), p];
-    return acc;
-  }, {});
+  // Close on outside click
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
 
-  const groupKeys = Object.keys(grouped).sort();
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return players.filter(p => p.id !== exclude).slice(0, 12);
+    return players
+      .filter(p => p.id !== exclude && (
+        p.name.toLowerCase().includes(q) ||
+        p.teamName.toLowerCase().includes(q) ||
+        p.position.toLowerCase().includes(q) ||
+        p.sport.toLowerCase().includes(q)
+      ))
+      .slice(0, 12);
+  }, [query, players, exclude]);
+
+  function select(id: string) {
+    onChange(id);
+    setOpen(false);
+    setQuery('');
+  }
+
+  function clear() {
+    onChange('');
+    setQuery('');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
 
   return (
-    <select
-      id={id}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      disabled={loading}
-      className="w-full rounded-lg px-3 py-2 text-sm cursor-pointer outline-none"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-    >
-      <option value="">{loading ? 'Loading roster…' : '— Select player —'}</option>
-      {groupKeys.map(group => (
-        <optgroup key={group} label={`${group} (${grouped[group].length})`}>
-          {grouped[group].map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name}{p.jersey !== '—' ? ` #${p.jersey}` : ''} · {p.position}
-            </option>
+    <div ref={wrapRef} className="relative">
+      {selected ? (
+        <div className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm"
+          style={{ background: 'var(--bg-card)', border: `1.5px solid ${selected.teamColor}55`, color: 'var(--text-primary)' }}>
+          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+            style={{ background: `${selected.teamColor}25`, color: selected.teamColor }}>
+            {selected.jersey !== '—' ? selected.jersey.slice(0, 2) : selected.position.slice(0, 1)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="font-semibold">{selected.name}</span>
+            <span className="ml-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+              {selected.position} · {selected.teamName}
+            </span>
+          </div>
+          <button onClick={clear} aria-label="Clear selection"
+            className="ml-1 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs cursor-pointer transition-colors"
+            style={{ color: 'var(--text-muted)', background: 'var(--bg-base)' }}>
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={loading ? `Loading ${label}…` : `Search ${label}…`}
+            value={query}
+            disabled={loading}
+            onChange={e => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+          />
+          {loading && (
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+              <Spinner />
+            </span>
+          )}
+        </div>
+      )}
+
+      {open && !selected && !loading && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl shadow-xl overflow-hidden"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', maxHeight: '320px', overflowY: 'auto' }}>
+          {results.length === 0 ? (
+            <div className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>No players found</div>
+          ) : results.map(p => (
+            <button key={p.id} onMouseDown={() => select(p.id)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left cursor-pointer transition-colors hover:opacity-80"
+              style={{ borderBottom: '1px solid var(--border-default)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                style={{ background: `${p.teamColor}22`, color: p.teamColor }}>
+                {p.jersey !== '—' ? p.jersey.slice(0, 2) : p.position.slice(0, 1)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
+                  {p.position} · {p.teamName}
+                </p>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+                style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
+                {p.sport}
+              </span>
+            </button>
           ))}
-        </optgroup>
-      ))}
-    </select>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -325,31 +405,31 @@ export default function ComparePlayersPage() {
       {/* Selectors */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="player-a-select" className="flex items-center gap-2 text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+          <label className="flex items-center gap-2 text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
             Player A
             {detailLoadingA && <Spinner />}
           </label>
-          <PlayerSelect
-            id="player-a-select"
+          <PlayerSearch
             value={aId}
             onChange={setAId}
             exclude={bId}
             players={roster}
             loading={rosterLoading}
+            label="player A"
           />
         </div>
         <div>
-          <label htmlFor="player-b-select" className="flex items-center gap-2 text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+          <label className="flex items-center gap-2 text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
             Player B
             {detailLoadingB && <Spinner />}
           </label>
-          <PlayerSelect
-            id="player-b-select"
+          <PlayerSearch
             value={bId}
             onChange={setBId}
             exclude={aId}
             players={roster}
             loading={rosterLoading}
+            label="player B"
           />
         </div>
       </div>

@@ -2,6 +2,17 @@
  * Player profiles for player detail and comparison pages.
  * Live data source: Sportradar / FantasyData API (set SPORTS_DATA_IO_API_KEY).
  */
+import { NBA_PLAYERS } from './data/players/nba';
+import { MLB_PLAYERS } from './data/players/mlb';
+import { NHL_PLAYERS } from './data/players/nhl';
+import { SOCCER_PLAYERS } from './data/players/soccer';
+import { UFC_PLAYERS } from './data/players/ufc';
+import { BOXING_PLAYERS } from './data/players/boxing';
+import { TENNIS_PLAYERS } from './data/players/tennis';
+import { F1_PLAYERS } from './data/players/f1';
+import { CRICKET_PLAYERS } from './data/players/cricket';
+import { ESPORTS_PLAYERS } from './data/players/esports';
+import { NCAA_PLAYERS } from './data/players/ncaa';
 
 export interface GameLogEntry {
   date: string;
@@ -816,6 +827,14 @@ export const PLAYER_DETAILS: Record<string, PlayerDetail> = {
     [['Aim',95],['Game Sense',96],['Team Play',84],['Mechanics',98],['Adaptability',92],['Mental Game',94]],
     {game:'FNCS Grand Finals',stats:[['Top 5 Prob','64%'],['Elims','4-8'],['Avg Placement','3-6'],['Victory Prob','22%']],conf:78}),
 };
+
+// Merge all sport-specific player databases
+Object.assign(PLAYER_DETAILS,
+  NBA_PLAYERS, MLB_PLAYERS, NHL_PLAYERS,
+  SOCCER_PLAYERS, UFC_PLAYERS, BOXING_PLAYERS,
+  TENNIS_PLAYERS, F1_PLAYERS, CRICKET_PLAYERS,
+  ESPORTS_PLAYERS, NCAA_PLAYERS,
+);
 
 export const PLAYER_LIST = Object.values(PLAYER_DETAILS).map(p => ({
   id: p.id,

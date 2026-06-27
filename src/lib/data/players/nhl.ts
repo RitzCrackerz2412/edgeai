@@ -1,0 +1,103 @@
+import { mkp } from './builder';
+import type { PlayerDetail } from '@/lib/playerData';
+
+export const NHL_PLAYERS: Record<string, PlayerDetail> = {
+'nhl-ovechkin': mkp('nhl-ovechkin','Alex Ovechkin','LW','8','was-capitals','Washington Capitals','#041E42',
+  'NHL',40,20,'All-time goals leader (897+) — The Great Eight, 2018 Stanley Cup champion, 9× Rocket Richard.',
+  [['Games',1544],['Goals',897],['Assists',698],['Points',1595],['+/-',89],['PIM',898],['PPG',327]],
+  [['Games',72],['Goals',31],['Assists',24],['Points',55],['+/-',2],['PIM',42],['Shots',260]],
+  [['Scoring',99],['Power Play',99],['Shooting',97],['Defense',55],['Leadership',96],['Durability',92]],82,
+  [['Goals','25-35'],['Assists','20-28'],['Points','45-60'],['PP Goals','12-16']]),
+
+'nhl-crosby': mkp('nhl-crosby','Sidney Crosby','C','87','pit-penguins','Pittsburgh Penguins','#FCB514',
+  'NHL',37,19,'3× Stanley Cup champion, 2× Hart Trophy — the greatest player of his generation.',
+  [['Games',1330],['Goals',601],['Assists',1023],['Points',1624],['+/-',204],['PIM',897],['PPG',160]],
+  [['Games',82],['Goals',42],['Assists',52],['Points',94],['+/-',12],['PIM',40],['Shots',308]],
+  [['Scoring',96],['Playmaking',99],['Defense',82],['Clutch',97],['Leadership',99],['Hockey IQ',99]],87,
+  [['Goals','35-45'],['Assists','45-60'],['Points','80-100'],['PP Points','20-28']]),
+
+'nhl-kucherov': mkp('nhl-kucherov','Nikita Kucherov','RW','86','tb-lightning','Tampa Bay Lightning','#002868',
+  'NHL',32,11,'2× Hart Trophy (most recent 2024) — elite playmaker and one of the most gifted scorers ever.',
+  [['Games',772],['Goals',381],['Assists',636],['Points',1017],['+/-',165],['PIM',339],['PPG',131]],
+  [['Games',81],['Goals',44],['Assists',100],['Points',144],['+/-',33],['PIM',44],['Shots',289]],
+  [['Scoring',97],['Playmaking',99],['Shooting',90],['Defense',72],['Clutch',96],['Vision',99]],88,
+  [['Goals','40-48'],['Assists','80-100'],['Points','120-148'],['PP Points','35-45']]),
+
+'nhl-draisaitl': mkp('nhl-draisaitl','Leon Draisaitl','C/LW','29','edm-oilers','Edmonton Oilers','#FF4C00',
+  'NHL',29,10,'2020 Hart Trophy — McDavid\'s lethal partner, elite power-play weapon and goal scorer.',
+  [['Games',664],['Goals',384],['Assists',530],['Points',914],['+/-',123],['PPG',155],['Shots',2311]],
+  [['Games',80],['Goals',45],['Assists',59],['Points',104],['+/-',16],['PPG',20],['Shots',300]],
+  [['Scoring',96],['Power Play',97],['Shooting',92],['Playmaking',90],['Defense',68],['Hockey IQ',94]],87,
+  [['Goals','40-48'],['Assists','55-65'],['Points','95-115'],['PP Goals','18-24']]),
+
+'nhl-kaprizov': mkp('nhl-kaprizov','Kirill Kaprizov','LW','97','min-wild','Minnesota Wild','#154734',
+  'NHL',28,4,'Russian superstar who arrived in the NHL as a ready-made elite scorer — multiple 40-goal seasons.',
+  [['Games',308],['Goals',168],['Assists',201],['Points',369],['+/-',62],['PIM',97],['Shots',1101]],
+  [['Games',82],['Goals',47],['Assists',49],['Points',96],['+/-',22],['PIM',26],['Shots',326]],
+  [['Scoring',94],['Shooting',90],['Playmaking',82],['Skating',90],['Defense',66],['Clutch',84]],85,
+  [['Goals','42-50'],['Assists','45-55'],['Points','88-102'],['Shots','310-340']]),
+
+
+'nhl-makar': mkp('nhl-makar','Cale Makar','D','8','col-avalanche','Colorado Avalanche','#6F263D',
+  'NHL',26,5,'Norris Trophy winner, 2022 Conn Smythe — the best offensive defenseman in the world.',
+  [['Games',340],['Goals',121],['Assists',271],['Points',392],['+/-',119],['PIM',127],['PPG',62]],
+  [['Games',77],['Goals',24],['Assists',56],['Points',80],['+/-',27],['PIM',24],['Shots',285]],
+  [['Skating',97],['Offense',96],['Defense',86],['Shooting',84],['Playmaking',92],['Hockey IQ',94]],87,
+  [['Goals','22-28'],['Assists','52-65'],['Points','74-92'],['PP Points','28-36']]),
+
+'nhl-fox': mkp('nhl-fox','Adam Fox','D','23','nyr-rangers','New York Rangers','#0038A8',
+  'NHL',27,6,'2021 Norris Trophy — elite puck-moving defenseman with exceptional offensive instincts.',
+  [['Games',410],['Goals',81],['Assists',310],['Points',391],['+/-',116],['PIM',120],['PPG',68]],
+  [['Games',82],['Goals',22],['Assists',57],['Points',79],['+/-',28],['PIM',30],['Shots',238]],
+  [['Defense',86],['Offense',90],['Skating',88],['Playmaking',92],['Shooting',78],['Hockey IQ',94]],85,
+  [['Goals','18-24'],['Assists','52-62'],['Points','70-86'],['PP Points','26-35']]),
+
+'nhl-hughes-j': mkp('nhl-hughes-j','Jack Hughes','C','86','njd-devils','New Jersey Devils','#CE1126',
+  'NHL',23,5,'Electric young center — multiple 90-point seasons and the face of New Jersey\'s rebuild.',
+  [['Games',335],['Goals',145],['Assists',215],['Points',360],['+/-',52],['PIM',97],['Shots',1058]],
+  [['Games',72],['Goals',32],['Assists',66],['Points',98],['+/-',18],['PIM',22],['Shots',256]],
+  [['Scoring',92],['Skating',96],['Playmaking',90],['Shooting',84],['Defense',64],['Upside',96]],86,
+  [['Goals','35-42'],['Assists','58-70'],['Points','92-108'],['Shots','260-300']]),
+
+'nhl-stutzle': mkp('nhl-stutzle','Tim Stützle','C/LW','18','ott-senators','Ottawa Senators','#E31837',
+  'NHL',23,4,'German phenom — dynamic playmaker who has blossomed into one of the NHL\'s best young players.',
+  [['Games',295],['Goals',124],['Assists',196],['Points',320],['+/-',32],['PIM',112],['Shots',870]],
+  [['Games',78],['Goals',39],['Assists',44],['Points',83],['+/-',12],['PIM',28],['Shots',266]],
+  [['Scoring',86],['Skating',90],['Playmaking',84],['Shooting',82],['Defense',62],['Upside',92]],83,
+  [['Goals','35-42'],['Assists','42-52'],['Points','78-92'],['Shots','270-300']]),
+
+'nhl-tkachuk-b': mkp('nhl-tkachuk-b','Brady Tkachuk','LW','7','ott-senators','Ottawa Senators','#E31837',
+  'NHL',26,6,'Power forward and team captain — punishing physical play combined with elite skill.',
+  [['Games',404],['Goals',164],['Assists',193],['Points',357],['+/-',18],['PIM',550],['PPG',44]],
+  [['Games',80],['Goals',37],['Assists',41],['Points',78],['+/-',6],['PIM',110],['Shots',292]],
+  [['Scoring',82],['Physical',97],['Defense',82],['Power Play',80],['Leadership',88],['Compete',98]],81,
+  [['Goals','32-40'],['Assists','38-48'],['Points','72-88'],['PIM','95-120']]),
+
+'nhl-tkachuk-m': mkp('nhl-tkachuk-m','Matthew Tkachuk','LW','19','fla-panthers','Florida Panthers','#C8102E',
+  'NHL',27,7,'2024 Cup champion — irritating and brilliant in equal measure, a complete forward.',
+  [['Games',502],['Goals',213],['Assists',346],['Points',559],['+/-',68],['PIM',541],['PPG',88]],
+  [['Games',71],['Goals',30],['Assists',54],['Points',84],['+/-',14],['PIM',72],['PPG',16]],
+  [['Scoring',88],['Playmaking',88],['Physical',90],['Power Play',88],['Defense',74],['Compete',96]],83,
+  [['Goals','30-37'],['Assists','50-60'],['Points','80-96'],['PP Points','22-30']]),
+
+'nhl-shesterkin': mkp('nhl-shesterkin','Igor Shesterkin','G','31','nyr-rangers','New York Rangers','#0038A8',
+  'NHL',29,5,'Best goaltender in the world — historically elite .934 save percentage in his career.',
+  [['Games',271],['Wins',173],['Losses',68],['SV%','.924'],['GAA','2.49'],['Shutouts',22]],
+  [['Games',59],['Wins',38],['Losses',16],['SV%','.913'],['GAA','2.80'],['Shutouts',4]],
+  [['Save %',96],['Reflexes',96],['Positioning',94],['Rebound Control',88],['Clutch',94],['Consistency',90]],88,
+  [['SV%','.910-.930'],['GAA','2.40-2.80'],['Wins','35-42'],['Shutouts','4-6']]),
+
+'nhl-vasilevskiy': mkp('nhl-vasilevskiy','Andrei Vasilevskiy','G','88','tb-lightning','Tampa Bay Lightning','#002868',
+  'NHL',31,10,'3× All-Star, 2021 Vezina — backbone of Tampa\'s dynasty run and one of the best ever.',
+  [['Games',533],['Wins',327],['Losses',145],['SV%','.919'],['GAA','2.54'],['Shutouts',40]],
+  [['Games',64],['Wins',38],['Losses',19],['SV%','.910'],['GAA','2.76'],['Shutouts',4]],
+  [['Save %',92],['Reflexes',92],['Positioning',96],['Clutch',96],['Durability',94],['Leadership',88]],85,
+  [['SV%','.908-.922'],['GAA','2.50-2.80'],['Wins','36-44'],['Shutouts','4-7']]),
+
+'nhl-saros': mkp('nhl-saros','Juuse Saros','G','74','nas-predators','Nashville Predators','#FFB81C',
+  'NHL',30,8,'Finnish phenom — despite his small stature, one of the most athletic goalies in the league.',
+  [['Games',356],['Wins',186],['Losses',120],['SV%','.915'],['GAA','2.72'],['Shutouts',22]],
+  [['Games',68],['Wins',35],['Losses',24],['SV%','.921'],['GAA','2.53'],['Shutouts',5]],
+  [['Save %',90],['Athleticism',96],['Reflexes',92],['Positioning',88],['Clutch',86],['Consistency',84]],82,
+  [['SV%','.914-.924'],['GAA','2.45-2.75'],['Wins','33-40'],['Shutouts','4-6']]),
+};
