@@ -1,5 +1,12 @@
 import { Game, Team, AccuracyStats, PredictionRecord, Sport } from './types';
 
+// Relative date helper — evaluated at module load time so mock games stay current.
+function relDate(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().split('T')[0];
+}
+
 export const SPORTS: Sport[] = [
   'NFL', 'NBA', 'MLB', 'NHL', 'Soccer',
   'NCAA Football', 'NCAA Basketball', 'UFC',
@@ -40,7 +47,7 @@ export const MOCK_GAMES: Game[] = [
     league: 'AFC Championship',
     homeTeam: TEAMS['kc-chiefs'],
     awayTeam: TEAMS['buf-bills'],
-    date: '2026-06-29',
+    date: relDate(1),
     time: '3:00 PM ET',
     venue: 'Arrowhead Stadium, Kansas City, MO',
     status: 'Upcoming',
@@ -90,10 +97,12 @@ export const MOCK_GAMES: Game[] = [
     league: 'NBA Regular Season',
     homeTeam: TEAMS['bos-celtics'],
     awayTeam: TEAMS['lal-lakers'],
-    date: '2026-06-26',
+    date: relDate(-2),
     time: '7:30 PM ET',
     venue: 'TD Garden, Boston, MA',
-    status: 'Upcoming',
+    status: 'Final',
+    homeScore: 122,
+    awayScore: 105,
     headToHead: {
       allTime: { home: 146, away: 166 },
       last5: { home: 3, away: 2 },
@@ -139,10 +148,12 @@ export const MOCK_GAMES: Game[] = [
     league: 'AL East',
     homeTeam: TEAMS['nyy-yankees'],
     awayTeam: TEAMS['hou-astros'],
-    date: '2026-06-27',
+    date: relDate(-1),
     time: '7:05 PM ET',
     venue: 'Yankee Stadium, New York, NY',
-    status: 'Upcoming',
+    status: 'Final',
+    homeScore: 4,
+    awayScore: 6,
     weather: { temp: 79, condition: 'Clear', wind: 8, humidity: 61 },
     headToHead: {
       allTime: { home: 218, away: 204 },
@@ -188,10 +199,14 @@ export const MOCK_GAMES: Game[] = [
     league: 'NHL Western Conference',
     homeTeam: TEAMS['col-avalanche'],
     awayTeam: TEAMS['tor-maple-leafs'],
-    date: '2026-06-28',
+    date: relDate(0),
     time: '9:00 PM ET',
     venue: 'Ball Arena, Denver, CO',
-    status: 'Upcoming',
+    status: 'Live',
+    period: 2,
+    clock: '3:24',
+    homeScore: 2,
+    awayScore: 1,
     headToHead: {
       allTime: { home: 18, away: 14 },
       last5: { home: 3, away: 2 },
@@ -235,7 +250,7 @@ export const MOCK_GAMES: Game[] = [
     league: 'Premier League',
     homeTeam: TEAMS['man-city'],
     awayTeam: TEAMS['arsenal'],
-    date: '2026-06-28',
+    date: relDate(0),
     time: '12:30 PM ET',
     venue: 'Etihad Stadium, Manchester, UK',
     status: 'Upcoming',
@@ -284,7 +299,7 @@ export const MOCK_GAMES: Game[] = [
     league: 'UFC Heavyweight Championship',
     homeTeam: TEAMS['jon-jones'],
     awayTeam: TEAMS['stipe-miocic'],
-    date: '2026-06-30',
+    date: relDate(3),
     time: '10:00 PM ET',
     venue: 'T-Mobile Arena, Las Vegas, NV',
     status: 'Upcoming',

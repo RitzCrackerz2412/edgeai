@@ -27,13 +27,34 @@ export function momentumColor(score: number): string {
   return '#ef4444';
 }
 
+/**
+ * Format a date string for display.
+ * Appends T00:00:00 when given a bare YYYY-MM-DD to avoid the UTC-midnight
+ * timezone trap where new Date("2026-06-28") shows as Jun 27 in US timezones.
+ */
 export function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+  const safe = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr + 'T00:00:00' : dateStr;
+  return new Date(safe).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
   });
+}
+
+/**
+ * Format an ISO timestamp (from provider) to local time with timezone abbreviation.
+ * e.g. "2026-06-28T23:30:00Z" → "7:30 PM ET"
+ */
+export function formatGameTime(isoStr: string, timeZone = 'America/New_York'): string {
+  return new Date(isoStr).toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short', timeZone,
+  });
+}
+
+/**
+ * Return YYYY-MM-DD in a given timezone (defaults to ET).
+ * Safe to compare with date-bucketing logic.
+ */
+export function isoDateInTZ(date: Date, timeZone = 'America/New_York'): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
 export function sportIcon(sport: string): string {

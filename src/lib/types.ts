@@ -72,9 +72,22 @@ export interface Game {
   league: string;
   homeTeam: Team;
   awayTeam: Team;
+  /** YYYY-MM-DD in ET — use scheduledAt for accurate timezone display */
   date: string;
+  /** Human-readable time string, e.g. "7:30 PM ET" */
   time: string;
+  /** Raw ISO 8601 timestamp from the provider */
+  scheduledAt?: string;
   venue: string;
+  status: 'Upcoming' | 'Pregame' | 'Live' | 'Halftime' | 'Final' | 'Final/OT' | 'Final/SO' | 'Postponed' | 'Cancelled';
+  /** Current game clock, e.g. "2:45" */
+  clock?: string;
+  /** Current period / quarter / inning */
+  period?: number;
+  /** Actual home score (live or final) */
+  homeScore?: number;
+  /** Actual away score (live or final) */
+  awayScore?: number;
   prediction: Prediction;
   odds: {
     opening: { home: number; away: number; spread: number };
@@ -96,7 +109,6 @@ export interface Game {
     avgScore: { home: number; away: number };
     lastMeeting: string;
   };
-  status: 'Upcoming' | 'Live' | 'Final';
 }
 
 export interface PredictionRecord {

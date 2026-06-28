@@ -78,10 +78,10 @@ function makeFallbackTeam(sport: Sport, league: string, displayName: string, abb
 
 // ── ELO prediction ────────────────────────────────────────────────────────────
 
-function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?: number, status?: string): Prediction {
+function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?: number, status?: Game['status']): Prediction {
   const prob = Math.round((1 / (1 + Math.pow(10, (away.eloRating - home.eloRating) / 400))) * 100);
   const conf = Math.min(95, Math.round(50 + (Math.abs(home.eloRating - away.eloRating) / 400) * 45));
-  const isFinal = status?.toLowerCase().includes('final');
+  const isFinal = status === 'Final' || status === 'Final/OT' || status === 'Final/SO';
 
   if (isFinal && homeScore !== undefined && awayScore !== undefined) {
     const winner = homeScore > awayScore ? home : away;
@@ -144,14 +144,24 @@ export function rawGameToGame(raw: RawGame): Game | null {
     hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York',
   }) + ' ET';
 
+  // Validate: home ≠ away, both teams must have non-empty names
+  if (!raw.homeTeamName || !raw.awayTeamName) return null;
+  if (raw.homeTeamId === raw.awayTeamId && raw.homeTeamId !== '') return null;
+  // Final scores must exist when status is closed
+  if (raw.status === 'closed' && (raw.homeScore === undefined || raw.awayScore === undefined)) {
+    // Allow — sometimes ESPN returns closed with score=0
+  }
+
   const statusMap: Record<string, Game['status']> = {
-    scheduled: 'Upcoming', inprogress: 'Live', closed: 'Final',
-    postponed: 'Upcoming', cancelled: 'Upcoming',
+    scheduled:  'Upcoming',
+    inprogress: 'Live',
+    closed:     'Final',
+    postponed:  'Postponed',
+    cancelled:  'Cancelled',
   };
   const status = statusMap[raw.status] ?? 'Upcoming';
-  const statusLabel = raw.status === 'closed' ? 'Final' : raw.status === 'inprogress' ? 'In Progress' : 'Scheduled';
 
-  const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, statusLabel);
+  const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status);
 
   return {
     id: `espn-${raw.id}`,
@@ -161,8 +171,13 @@ export function rawGameToGame(raw: RawGame): Game | null {
     awayTeam: away,
     date: dateStr,
     time: timeStr,
+    scheduledAt: raw.scheduledAt,
     venue: raw.venue,
     status,
+    period: raw.period,
+    clock: raw.clock,
+    homeScore: raw.homeScore,
+    awayScore: raw.awayScore,
     prediction,
     odds: {
       opening: { home: -110, away: -110, spread: 0 },

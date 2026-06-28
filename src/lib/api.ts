@@ -24,6 +24,7 @@ import { LEAGUES, ALL_LEAGUES } from './data/leagues';
 import { TOURNAMENTS, ALL_TOURNAMENTS } from './data/tournaments';
 import { rawGameToGame, getAllEspnPlayers, type PlayerSummary } from './data/live';
 import { getProviders } from './providers';
+import type { RawGame } from './providers/types';
 
 // Engine imports (tree-shaken in production if ENGINE_ENABLED is false)
 import type { EnginePrediction } from './engine';
@@ -32,13 +33,28 @@ import { cached, cacheKey, TTL } from './cache';
 const LIVE_SPORTS: Sport[] = ['NFL', 'NBA', 'MLB', 'NHL', 'Soccer'];
 
 // ── Games ────────────────────────────────────────────────────────
+
+function addDays(base: Date, n: number): string {
+  const d = new Date(base);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
 export async function getUpcomingGames(filters?: {
   sport?: Sport;
   league?: string;
   minConfidence?: number;
+  /** Also include yesterday's final games (default: true) */
+  includeRecent?: boolean;
 }): Promise<Game[]> {
-  // Fetch live games from ESPN for supported sports, merge with mock data
-  const today = new Date().toISOString().split('T')[0];
+  const includeRecent = filters?.includeRecent !== false; // default true
+  const today = new Date();
+  const dates = [
+    addDays(today, -1), // yesterday — for recently-finished
+    addDays(today,  0), // today
+    addDays(today,  1), // tomorrow
+  ].filter((_, i) => i > 0 || includeRecent);
+
   const sportsToFetch = filters?.sport
     ? (LIVE_SPORTS.includes(filters.sport) ? [filters.sport] : [])
     : LIVE_SPORTS;
@@ -48,7 +64,9 @@ export async function getUpcomingGames(filters?: {
     try {
       const provider = getProviders().sports;
       const rawResults = await Promise.all(
-        sportsToFetch.map(s => provider.getGames(s, today).catch(() => [])),
+        sportsToFetch.flatMap(s =>
+          dates.map(date => provider.getGames(s, date).catch((): RawGame[] => [])),
+        ),
       );
       const seen = new Set<string>();
       liveGames = rawResults.flat()

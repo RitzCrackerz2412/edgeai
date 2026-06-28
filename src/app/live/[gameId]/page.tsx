@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Play, Pause, RotateCcw } from 'lucide-react';
-import { MOCK_GAMES } from '@/lib/mockData';
+import type { Game } from '@/lib/types';
 import { initLiveGame, tick } from '@/lib/live/engine';
 import type { LiveGameState } from '@/lib/live/engine';
 import {
@@ -37,7 +37,14 @@ function WinProbBar({ homeProb, homeColor, awayColor, homeTeam, awayTeam }: {
 
 export default function LiveGamePage() {
   const { gameId } = useParams<{ gameId: string }>();
-  const game = MOCK_GAMES.find(g => g.id === gameId);
+  const [game, setGame] = useState<Game | null | undefined>(undefined); // undefined = loading
+
+  useEffect(() => {
+    fetch(`/api/game/${gameId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setGame(data?.game ?? null))
+      .catch(() => setGame(null));
+  }, [gameId]);
 
   const [liveState, setLiveState] = useState<LiveGameState | null>(null);
   const [running, setRunning] = useState(false);
@@ -81,6 +88,12 @@ export default function LiveGamePage() {
     }, 1200);
     return () => clearTimeout(t);
   }, [running, liveState]);
+
+  if (game === undefined) return (
+    <div className="max-w-screen-xl mx-auto px-6 py-16 text-center" style={{ color: 'var(--text-muted)' }}>
+      Loading game data…
+    </div>
+  );
 
   if (!game) return (
     <div className="max-w-screen-xl mx-auto px-6 py-16 text-center" style={{ color: 'var(--text-muted)' }}>
