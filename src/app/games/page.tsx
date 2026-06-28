@@ -92,7 +92,7 @@ export default async function GamesPage() {
       <header className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight">Games</h1>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Live scores · Upcoming fixtures · Predictions across all leagues
+          Live scores · Upcoming fixtures · Predictions across all leagues · All times ET
           {liveCount > 0 && (
             <span className="ml-2 inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium"
               style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
@@ -166,17 +166,18 @@ function GameCard({ game, compact = false }: { game: Game; compact?: boolean }) 
   const showScore = (isFinal(game.status) || isLive(game.status)) &&
     game.homeScore !== undefined && game.awayScore !== undefined;
 
-  // Display time: prefer scheduledAt (accurate ISO) over time string
-  const displayTime = game.scheduledAt
-    ? new Date(game.scheduledAt).toLocaleTimeString('en-US', {
-        hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York',
-      }) + ' ET'
-    : game.time;
-
-  // Display date: append T00:00:00 to avoid UTC-midnight trap
-  const displayDate = new Date(game.date + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric',
-  });
+  // Combine date + time into a single "Jun 28 · 7:30 PM ET" string
+  const displayDateTime = game.scheduledAt
+    ? (() => {
+        const d = new Date(game.scheduledAt);
+        const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
+        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
+        return `${date} · ${time} ET`;
+      })()
+    : (() => {
+        const date = new Date(game.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return game.time ? `${date} · ${game.time}` : date;
+      })();
 
   const homeLeads = showScore && (game.homeScore! > game.awayScore!);
   const awayLeads = showScore && (game.awayScore! > game.homeScore!);
@@ -205,10 +206,7 @@ function GameCard({ game, compact = false }: { game: Game; compact?: boolean }) 
               {badge.label}
             </span>
           ) : (
-            <>
-              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{displayDate}</span>
-              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{displayTime}</span>
-            </>
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{displayDateTime}</span>
           )}
         </div>
       </div>

@@ -49,11 +49,11 @@ export async function getUpcomingGames(filters?: {
 }): Promise<Game[]> {
   const includeRecent = filters?.includeRecent !== false; // default true
   const today = new Date();
-  const dates = [
-    addDays(today, -1), // yesterday — for recently-finished
-    addDays(today,  0), // today
-    addDays(today,  1), // tomorrow
-  ].filter((_, i) => i > 0 || includeRecent);
+  // Fetch 2 past days + today + 7 ahead for a full rolling week of coverage
+  const dates: string[] = [];
+  for (let i = (includeRecent ? -2 : 0); i <= 7; i++) {
+    dates.push(addDays(today, i));
+  }
 
   const sportsToFetch = filters?.sport
     ? (LIVE_SPORTS.includes(filters.sport) ? [filters.sport] : [])

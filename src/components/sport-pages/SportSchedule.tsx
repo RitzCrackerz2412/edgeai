@@ -45,8 +45,8 @@ function MatchRow({ game, color, slug }: { game: Game; color: string; slug: stri
   const timeStr = game.scheduledAt
     ? new Date(game.scheduledAt).toLocaleTimeString('en-US', {
         hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York',
-      })
-    : game.time.replace(' ET', '');
+      }) + ' ET'
+    : game.time;
 
   const homeLeads = showScore && game.homeScore! > game.awayScore!;
   const awayLeads = showScore && game.awayScore! > game.homeScore!;

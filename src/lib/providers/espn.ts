@@ -23,13 +23,28 @@ const SPORT_PATH: Partial<Record<Sport, string>> = {
 
 // Soccer uses multiple league paths — fetched in parallel
 const SOCCER_PATHS: Record<string, string> = {
-  'World Cup':  'soccer/fifa.world',
-  EPL:          'soccer/eng.1',
-  'La Liga':    'soccer/esp.1',
-  Bundesliga:   'soccer/ger.1',
-  'Serie A':    'soccer/ita.1',
-  'Ligue 1':    'soccer/fra.1',
-  MLS:          'soccer/usa.1',
+  // Major domestic leagues
+  EPL:               'soccer/eng.1',
+  'La Liga':         'soccer/esp.1',
+  Bundesliga:        'soccer/ger.1',
+  'Serie A':         'soccer/ita.1',
+  'Ligue 1':         'soccer/fra.1',
+  MLS:               'soccer/usa.1',
+  NWSL:              'soccer/usa.nwsl',
+  'Liga MX':         'soccer/mex.1',
+  'Eredivisie':      'soccer/ned.1',
+  'Primeira Liga':   'soccer/por.1',
+  // European club competitions
+  'Champions League':  'soccer/uefa.champions',
+  'Europa League':     'soccer/uefa.europa',
+  'Conference League': 'soccer/uefa.conference',
+  // International club
+  'Club World Cup':    'soccer/fifa.cwc',
+  'Copa Libertadores': 'soccer/conmebol.libertadores',
+  'Copa Sudamericana': 'soccer/conmebol.sudamericana',
+  // International
+  'World Cup':         'soccer/fifa.world',
+  'Nations League':    'soccer/uefa.nations',
 };
 
 function normStatus(espnTypeName: string): RawGame['status'] {
@@ -109,11 +124,8 @@ export class ESPNProvider implements SportsDataProvider {
   readonly name = 'ESPN';
 
   async getGames(sport: Sport, date: string): Promise<RawGame[]> {
-    const d = new Date(date);
-    const formatted =
-      String(d.getFullYear()) +
-      String(d.getMonth() + 1).padStart(2, '0') +
-      String(d.getDate()).padStart(2, '0');
+    // Strip hyphens directly — avoids UTC-midnight timezone trap from new Date("YYYY-MM-DD")
+    const formatted = date.replace(/-/g, '');
 
     if (sport === 'Soccer') {
       const results = await Promise.all(
