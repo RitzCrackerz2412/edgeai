@@ -1,6 +1,6 @@
 /**
  * POST /api/sync  — trigger a sync job
- * Body: { type: 'all' | 'schedules' | 'injuries' | 'weather' | 'odds' | 'standings' | 'player_stats', sport? }
+ * Body: { type: 'all' | 'schedules' | 'injuries' | 'odds' | 'standings' | 'player_stats', sport? }
  *
  * GET  /api/sync  — queue health + DLQ summary
  */
@@ -11,7 +11,7 @@ import { JOB_TYPES, scheduleFullSync, scheduleOddsRefresh, scheduleInjuryRefresh
 import { checkRateLimit, getIp } from '@/lib/security/rateLimit';
 import type { Sport } from '@/lib/types';
 
-const VALID_TYPES = ['all', 'schedules', 'injuries', 'weather', 'odds', 'standings', 'player_stats'] as const;
+const VALID_TYPES = ['all', 'schedules', 'injuries', 'odds', 'standings', 'player_stats'] as const;
 type SyncType = (typeof VALID_TYPES)[number];
 
 async function requireAdmin() {
@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
     case 'odds':         jobId = sport ? scheduleOddsRefresh(sport) : jobQueue.enqueue(JOB_TYPES.REFRESH_ODDS, { sport }); break;
     case 'injuries':     jobId = sport ? scheduleInjuryRefresh(sport) : jobQueue.enqueue(JOB_TYPES.REFRESH_INJURIES, { sport }); break;
     case 'schedules':    jobId = jobQueue.enqueue(JOB_TYPES.REFRESH_SCHEDULES,    { sport }, { priority: 'high' }); break;
-    case 'weather':      jobId = jobQueue.enqueue(JOB_TYPES.REFRESH_WEATHER,      {}, { priority: 'normal' }); break;
     case 'standings':    jobId = jobQueue.enqueue(JOB_TYPES.REFRESH_STANDINGS,    { sport }, { priority: 'normal' }); break;
     case 'player_stats': jobId = jobQueue.enqueue(JOB_TYPES.REFRESH_PLAYER_STATS, { sport }, { priority: 'low' }); break;
     default: return NextResponse.json({ error: 'Unknown type' }, { status: 400 });
