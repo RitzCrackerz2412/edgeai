@@ -13,6 +13,7 @@ import { F1_PLAYERS } from './data/players/f1';
 import { CRICKET_PLAYERS } from './data/players/cricket';
 import { ESPORTS_PLAYERS } from './data/players/esports';
 import { NCAA_PLAYERS } from './data/players/ncaa';
+import { NFL_PLAYERS } from './data/players/nfl';
 
 export interface GameLogEntry {
   date: string;
@@ -830,7 +831,7 @@ export const PLAYER_DETAILS: Record<string, PlayerDetail> = {
 
 // Merge all sport-specific player databases
 Object.assign(PLAYER_DETAILS,
-  NBA_PLAYERS, MLB_PLAYERS, NHL_PLAYERS,
+  NBA_PLAYERS, MLB_PLAYERS, NHL_PLAYERS, NFL_PLAYERS,
   SOCCER_PLAYERS, UFC_PLAYERS, BOXING_PLAYERS,
   TENNIS_PLAYERS, F1_PLAYERS, CRICKET_PLAYERS,
   ESPORTS_PLAYERS, NCAA_PLAYERS,
