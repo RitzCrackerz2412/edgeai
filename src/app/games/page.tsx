@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import { getUpcomingGames } from '@/lib/api';
 import type { Game } from '@/lib/types';
-import { sportIcon, isoDateInTZ } from '@/lib/utils';
+import { isoDateInTZ } from '@/lib/utils';
 
-export const revalidate = 60; // refresh every 60 s
+export const revalidate = 60;
 
-// ── Date bucketing ────────────────────────────────────────────────────────────
+// ── Bucket classification ─────────────────────────────────────────────────────
 
 type Bucket = 'live' | 'today' | 'tomorrow' | 'week' | 'later' | 'finished';
 
@@ -14,52 +15,296 @@ function classify(game: Game): Bucket {
   if (game.status === 'Final' || game.status === 'Final/OT' || game.status === 'Final/SO') return 'finished';
   if (game.status === 'Postponed' || game.status === 'Cancelled') return 'finished';
 
-  const now = new Date();
-  const d0 = isoDateInTZ(now, 'America/New_York');
-  const d1 = isoDateInTZ(new Date(now.getTime() + 86_400_000), 'America/New_York');
-  const d7 = isoDateInTZ(new Date(now.getTime() + 7 * 86_400_000), 'America/New_York');
+  const now  = new Date();
+  const d0   = isoDateInTZ(now, 'America/New_York');
+  const d1   = isoDateInTZ(new Date(now.getTime() + 86_400_000), 'America/New_York');
+  const d7   = isoDateInTZ(new Date(now.getTime() + 7 * 86_400_000), 'America/New_York');
+  const date = game.date.slice(0, 10);
 
-  const gameDate = game.date.slice(0, 10);
-  if (gameDate === d0) return 'today';
-  if (gameDate === d1) return 'tomorrow';
-  if (gameDate <= d7)  return 'week';
+  if (date === d0) return 'today';
+  if (date === d1) return 'tomorrow';
+  if (date <= d7)  return 'week';
   return 'later';
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
-const STATUS_BADGE: Record<string, { label: string; style: React.CSSProperties }> = {
-  Live:      { label: '● LIVE',     style: { background: 'rgba(239,68,68,0.12)',  color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' } },
-  Halftime:  { label: 'HALFTIME',   style: { background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' } },
-  Pregame:   { label: 'PREGAME',    style: { background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' } },
-  Final:     { label: 'FINAL',      style: { background: 'rgba(16,185,129,0.08)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.2)' } },
-  'Final/OT':{ label: 'FINAL/OT',   style: { background: 'rgba(16,185,129,0.08)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.2)' } },
-  'Final/SO':{ label: 'FINAL/SO',   style: { background: 'rgba(16,185,129,0.08)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.2)' } },
-  Postponed: { label: 'POSTPONED',  style: { background: 'rgba(245,158,11,0.08)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.2)' } },
-  Cancelled: { label: 'CANCELLED',  style: { background: 'rgba(107,114,128,0.1)', color: '#9ca3af', border: '1px solid rgba(107,114,128,0.2)' } },
+function isFinal(s: Game['status']) { return s === 'Final' || s === 'Final/OT' || s === 'Final/SO'; }
+function isLive(s: Game['status'])  { return s === 'Live' || s === 'Halftime'; }
+function hasScore(g: Game)          { return (isFinal(g.status) || isLive(g.status)) && g.homeScore !== undefined && g.awayScore !== undefined; }
+
+// ── Sport colors ──────────────────────────────────────────────────────────────
+
+const SPORT_COLOR: Record<string, string> = {
+  NFL: 'var(--sport-nfl)',   NBA: 'var(--sport-nba)',   MLB: 'var(--sport-mlb)',
+  NHL: 'var(--sport-nhl)',   Soccer: 'var(--sport-soccer)', 'NCAA Football': 'var(--sport-ncaaf)',
+  'NCAA Basketball': 'var(--sport-ncaab)', UFC: 'var(--sport-ufc)', Boxing: 'var(--sport-boxing)',
+  Tennis: 'var(--sport-tennis)', 'Formula 1': 'var(--sport-f1)', Cricket: 'var(--sport-cricket)',
+  Esports: 'var(--sport-esports)',
 };
 
-function isFinal(status: Game['status']) {
-  return status === 'Final' || status === 'Final/OT' || status === 'Final/SO';
+// ── Sorting + grouping ────────────────────────────────────────────────────────
+
+function sortGames(arr: Game[]) {
+  return [...arr].sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date));
 }
 
-function isLive(status: Game['status']) {
-  return status === 'Live' || status === 'Halftime';
+// League priority — high-profile leagues first
+const LEAGUE_PRIORITY: Record<string, number> = {
+  'World Cup': 0, 'Club World Cup': 1, 'Champions League': 2, 'Europa League': 3,
+  NFL: 5, NBA: 6, MLB: 7, NHL: 8,
+  'Copa Libertadores': 10, 'Nations League': 11,
+};
+
+function groupByLeague(games: Game[]): { league: string; sport: string; games: Game[] }[] {
+  const map = new Map<string, { sport: string; games: Game[] }>();
+  for (const g of games) {
+    if (!map.has(g.league)) map.set(g.league, { sport: g.sport, games: [] });
+    map.get(g.league)!.games.push(g);
+  }
+  return Array.from(map.entries())
+    .map(([league, { sport, games }]) => ({ league, sport, games: sortGames(games) }))
+    .sort((a, b) => (LEAGUE_PRIORITY[a.league] ?? 50) - (LEAGUE_PRIORITY[b.league] ?? 50));
+}
+
+// ── Time formatting ───────────────────────────────────────────────────────────
+
+function fmtTime(g: Game): string {
+  if (g.scheduledAt) {
+    return new Date(g.scheduledAt).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York',
+    }) + ' ET';
+  }
+  return g.time ?? '';
+}
+
+function fmtDate(g: Game): string {
+  const ref = g.scheduledAt ?? (g.date + 'T00:00:00');
+  return new Date(ref).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', timeZone: 'America/New_York',
+  });
 }
 
 // ── Prediction outcome ────────────────────────────────────────────────────────
 
-function getPredictionOutcome(game: Game): { correct: boolean; label: string } | null {
-  if (!isFinal(game.status)) return null;
-  if (game.homeScore === undefined || game.awayScore === undefined) return null;
-  const actualWinner = game.homeScore >= game.awayScore ? game.homeTeam.name : game.awayTeam.name;
-  const correct = actualWinner === game.prediction.winner;
-  return {
-    correct,
-    label: correct
-      ? `✓ ${game.prediction.winner.split(' ').slice(-1)[0]} won as predicted`
-      : `✗ Predicted ${game.prediction.winner.split(' ').slice(-1)[0]}, ${actualWinner.split(' ').slice(-1)[0]} won`,
-  };
+function outcome(g: Game): 'correct' | 'incorrect' | null {
+  if (!isFinal(g.status) || g.homeScore === undefined || g.awayScore === undefined) return null;
+  const actual = g.homeScore >= g.awayScore ? g.homeTeam.name : g.awayTeam.name;
+  return actual === g.prediction.winner ? 'correct' : 'incorrect';
+}
+
+// ── Live Scoreboard Card ──────────────────────────────────────────────────────
+
+function LiveScoreCard({ game: g }: { game: Game }) {
+  const scoreAvail = hasScore(g);
+  const homeLeads  = scoreAvail && g.homeScore! > g.awayScore!;
+  const awayLeads  = scoreAvail && g.awayScore! > g.homeScore!;
+  const winHome    = g.prediction.winner === g.homeTeam.name;
+  const homeWin    = winHome ? g.prediction.winProbability : 100 - g.prediction.winProbability;
+
+  return (
+    <Link href={`/game/${g.id}`} className="live-card">
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <span style={{ fontSize:'0.5625rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color: SPORT_COLOR[g.sport] ?? 'var(--accent-light)' }}>
+          {g.league}
+        </span>
+        <div style={{ display:'flex', alignItems:'center', gap:'0.3125rem' }}>
+          <span className="live-dot-sm" />
+          <span style={{ fontSize:'0.5625rem', fontWeight:700, color:'#ef4444' }}>
+            {g.status === 'Halftime' ? 'HT' : g.clock ? g.clock : 'LIVE'}
+            {g.status !== 'Halftime' && g.period ? ` · P${g.period}` : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Teams + scores */}
+      <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
+        {[
+          { team: g.homeTeam, score: g.homeScore, leads: homeLeads, predicted: winHome },
+          { team: g.awayTeam, score: g.awayScore, leads: awayLeads, predicted: !winHome },
+        ].map(({ team, score, leads, predicted }) => (
+          <div key={team.id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+            <span style={{ width:7, height:7, borderRadius:'50%', background:team.color, flexShrink:0, display:'inline-block' }} />
+            <span style={{ fontSize:'0.8125rem', fontWeight:leads ? 700 : 400, color:leads ? 'var(--text-primary)' : 'var(--text-secondary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {team.name.split(' ').slice(-1)[0]}
+            </span>
+            {scoreAvail && (
+              <span className="text-score" style={{ fontSize:'1.25rem', color:leads ? team.color : 'var(--text-primary)' }}>
+                {score ?? 0}
+              </span>
+            )}
+            {!scoreAvail && predicted && (
+              <span style={{ fontSize:'0.5625rem', fontWeight:700, color:'var(--accent-light)' }}>●</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Win probability */}
+      <div>
+        <div style={{ height:2, borderRadius:1, overflow:'hidden', display:'flex', background:'var(--bg-surface)' }}>
+          <div style={{ height:'100%', width:`${homeWin}%`, background:g.homeTeam.color, transition:'width 0.4s' }} />
+          <div style={{ height:'100%', flex:1, background:g.awayTeam.color }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:'0.25rem' }}>
+          <span style={{ fontSize:'0.5625rem', color:'var(--text-muted)', fontVariantNumeric:'tabular-nums' }}>{homeWin.toFixed(0)}%</span>
+          {g.venue && <span style={{ fontSize:'0.5625rem', color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'8rem', whiteSpace:'nowrap', textAlign:'center' }}>{g.venue.split(',')[0]}</span>}
+          <span style={{ fontSize:'0.5625rem', color:'var(--text-muted)', fontVariantNumeric:'tabular-nums' }}>{(100-homeWin).toFixed(0)}%</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ── Fixture Row ───────────────────────────────────────────────────────────────
+
+function FixtureRow({ game: g }: { game: Game }) {
+  const scored    = hasScore(g);
+  const homeLeads = scored && g.homeScore! > g.awayScore!;
+  const awayLeads = scored && g.awayScore! > g.homeScore!;
+  const result    = outcome(g);
+  const winHome   = g.prediction.winner === g.homeTeam.name;
+  const homePct   = winHome ? g.prediction.winProbability : 100 - g.prediction.winProbability;
+  const awayPct   = 100 - homePct;
+  const leadSide  = homePct >= awayPct ? 'home' : 'away';
+
+  return (
+    <Link href={`/game/${g.id}`} className="fixture-row">
+      {/* Home team */}
+      <div style={{ display:'flex', alignItems:'center', gap:'0.4375rem', minWidth:0, overflow:'hidden' }}>
+        <span style={{ width:7, height:7, borderRadius:'50%', background:g.homeTeam.color, flexShrink:0, display:'inline-block' }} />
+        <span style={{
+          fontSize:'0.8125rem',
+          fontWeight: (homeLeads || (!scored && winHome)) ? 600 : 400,
+          color:      (homeLeads || (!scored && winHome)) ? 'var(--text-primary)' : 'var(--text-secondary)',
+          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+        }}>
+          {g.homeTeam.name}
+        </span>
+      </div>
+
+      {/* Center: score / time / status */}
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.0625rem' }}>
+        {scored ? (
+          <span className="text-score" style={{ fontSize:'0.9375rem', color:'var(--text-primary)', letterSpacing:'-0.02em' }}>
+            <span style={{ color:homeLeads ? g.homeTeam.color : 'var(--text-primary)' }}>{g.homeScore}</span>
+            <span style={{ color:'var(--text-muted)', margin:'0 3px' }}>–</span>
+            <span style={{ color:awayLeads ? g.awayTeam.color : 'var(--text-primary)' }}>{g.awayScore}</span>
+          </span>
+        ) : isLive(g.status) ? (
+          <span style={{ fontSize:'0.625rem', fontWeight:700, color:'#ef4444' }}>
+            {g.clock ? g.clock : 'LIVE'}{g.period ? ` P${g.period}` : ''}
+          </span>
+        ) : (
+          <span style={{ fontSize:'0.6875rem', color:'var(--text-muted)', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+            {fmtTime(g)}
+          </span>
+        )}
+        {isFinal(g.status) && (
+          <span style={{ fontSize:'0.5rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>FT</span>
+        )}
+        {g.status === 'Halftime' && (
+          <span style={{ fontSize:'0.5rem', fontWeight:700, color:'#f59e0b', textTransform:'uppercase', letterSpacing:'0.08em' }}>HT</span>
+        )}
+        {(g.status === 'Postponed' || g.status === 'Cancelled') && (
+          <span style={{ fontSize:'0.5rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{g.status.toUpperCase()}</span>
+        )}
+      </div>
+
+      {/* Away team */}
+      <div style={{ display:'flex', alignItems:'center', gap:'0.4375rem', minWidth:0, overflow:'hidden', justifyContent:'flex-end' }}>
+        <span style={{
+          fontSize:'0.8125rem',
+          fontWeight: (awayLeads || (!scored && !winHome)) ? 600 : 400,
+          color:      (awayLeads || (!scored && !winHome)) ? 'var(--text-primary)' : 'var(--text-secondary)',
+          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'right',
+        }}>
+          {g.awayTeam.name}
+        </span>
+        <span style={{ width:7, height:7, borderRadius:'50%', background:g.awayTeam.color, flexShrink:0, display:'inline-block' }} />
+      </div>
+
+      {/* Prediction */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
+        {result === 'correct' && (
+          <span style={{ fontSize:'0.5625rem', fontWeight:700, padding:'0.125rem 0.375rem', borderRadius:3, background:'rgba(16,185,129,0.1)', color:'#10b981' }}>✓</span>
+        )}
+        {result === 'incorrect' && (
+          <span style={{ fontSize:'0.5625rem', fontWeight:700, padding:'0.125rem 0.375rem', borderRadius:3, background:'rgba(239,68,68,0.08)', color:'#ef4444' }}>✗</span>
+        )}
+        {result === null && !isLive(g.status) && (
+          <span style={{ fontSize:'0.6875rem', fontWeight:600, color:'var(--text-muted)', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+            {leadSide === 'home' ? g.homeTeam.abbreviation : g.awayTeam.abbreviation} {Math.max(homePct, awayPct).toFixed(0)}%
+          </span>
+        )}
+        {isLive(g.status) && (
+          <span className="live-dot-sm" />
+        )}
+      </div>
+
+      {/* Arrow */}
+      <ChevronRight size={13} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+    </Link>
+  );
+}
+
+// ── League group ──────────────────────────────────────────────────────────────
+
+function LeagueGroup({ league, sport, games }: { league: string; sport: string; games: Game[] }) {
+  const color = SPORT_COLOR[sport] ?? 'var(--accent-light)';
+  return (
+    <>
+      <div className="fixture-league-hdr">
+        <span style={{ width:8, height:8, borderRadius:2, background:color, display:'inline-block', flexShrink:0 }} />
+        <span style={{ fontSize:'0.5625rem', fontWeight:700, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:'0.09em' }}>
+          {league}
+        </span>
+        <span style={{ marginLeft:'auto', fontSize:'0.5625rem', color:'var(--text-muted)', fontVariantNumeric:'tabular-nums' }}>
+          {games.length}
+        </span>
+      </div>
+      {games.map(g => <FixtureRow key={g.id} game={g} />)}
+    </>
+  );
+}
+
+// ── Section ───────────────────────────────────────────────────────────────────
+
+function FixtureSection({
+  label, games, sectionDate, isLiveSection,
+}: {
+  label: string; games: Game[]; sectionDate?: string; isLiveSection?: boolean;
+}) {
+  const leagues = groupByLeague(games);
+
+  return (
+    <section style={{ marginBottom:'1.75rem' }}>
+      {/* Section header */}
+      <div className="section-label">
+        {isLiveSection && <span className="live-dot" />}
+        <span className="section-label-text" style={{ color: isLiveSection ? '#ef4444' : undefined }}>
+          {label}
+        </span>
+        {sectionDate && <span style={{ fontSize:'0.625rem', color:'var(--text-muted)' }}>· {sectionDate}</span>}
+        <span className="section-count">{games.length}</span>
+      </div>
+
+      {isLiveSection ? (
+        /* Live section: horizontal scroll of scoreboard cards */
+        <div className="scroll-ribbon">
+          {sortGames(games).map(g => <LiveScoreCard key={g.id} game={g} />)}
+        </div>
+      ) : (
+        /* Non-live: flat fixture list grouped by league */
+        <div className="fixture-section">
+          {leagues.map(({ league, sport, games: lg }) => (
+            <LeagueGroup key={league} league={league} sport={sport} games={lg} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -67,268 +312,74 @@ function getPredictionOutcome(game: Game): { correct: boolean; label: string } |
 export default async function GamesPage() {
   const games = await getUpcomingGames({ includeRecent: true });
 
-  const buckets: Record<Bucket, Game[]> = { live: [], today: [], tomorrow: [], week: [], later: [], finished: [] };
+  const buckets: Record<Bucket, Game[]> = { live:[], today:[], tomorrow:[], week:[], later:[], finished:[] };
   for (const g of games) buckets[classify(g)].push(g);
 
-  // Sort each bucket by scheduledAt or date
-  const sortGames = (arr: Game[]) =>
-    [...arr].sort((a, b) =>
-      (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date));
+  const liveCount  = buckets.live.length;
+  const todayDate  = new Date().toLocaleDateString('en-US', {
+    weekday:'long', month:'long', day:'numeric', timeZone:'America/New_York',
+  });
 
-  const liveCount = buckets.live.length;
-
-  const ALL_SECTIONS: { key: Bucket; label: string; desc?: string }[] = [
-    { key: 'live',     label: 'Live Now',         desc: liveCount > 0 ? `${liveCount} game${liveCount !== 1 ? 's' : ''} in progress` : undefined },
-    { key: 'today',    label: 'Today' },
-    { key: 'tomorrow', label: 'Tomorrow' },
-    { key: 'week',     label: 'This Week' },
-    { key: 'later',    label: 'Upcoming' },
-    { key: 'finished', label: 'Recently Finished' },
-  ];
-  const sections = ALL_SECTIONS.filter(s => buckets[s.key].length > 0);
+  const SECTIONS = [
+    { key: 'today'    as Bucket, label: 'Today' },
+    { key: 'tomorrow' as Bucket, label: 'Tomorrow' },
+    { key: 'week'     as Bucket, label: 'This Week' },
+    { key: 'later'    as Bucket, label: 'Upcoming' },
+    { key: 'finished' as Bucket, label: 'Recent Results' },
+  ].filter(s => buckets[s.key].length > 0);
 
   return (
-    <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-8 space-y-10" style={{ color: 'var(--text-primary)' }}>
-      <header className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">Games</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Live scores · Upcoming fixtures · Predictions across all leagues · All times ET
-          {liveCount > 0 && (
-            <span className="ml-2 inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-              {liveCount} live
-            </span>
-          )}
-        </p>
-      </header>
+    <main style={{ maxWidth:'56rem', margin:'0 auto' }}>
 
-      {sections.map(({ key, label, desc }) => (
-        <section key={key} className="space-y-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold">{label}</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-              style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-              {buckets[key].length}
-            </span>
-            {desc && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{desc}</span>}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortGames(buckets[key]).map(g => <GameCard key={g.id} game={g} />)}
-          </div>
-        </section>
-      ))}
+      {/* Page header */}
+      <div className="page-header">
+        <h1 className="page-title">Games</h1>
+        {liveCount > 0 && (
+          <span style={{
+            display:'inline-flex', alignItems:'center', gap:'0.375rem',
+            fontSize:'0.5625rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.09em',
+            padding:'0.1875rem 0.625rem', borderRadius:100,
+            background:'rgba(239,68,68,0.1)', color:'#ef4444',
+            border:'1px solid rgba(239,68,68,0.2)',
+          }}>
+            <span className="live-dot-sm" />{liveCount} Live
+          </span>
+        )}
+        <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', marginLeft:'auto' }}>
+          {todayDate} · ET
+        </span>
+      </div>
+
+      {/* Live section */}
+      {liveCount > 0 && (
+        <FixtureSection
+          label="Live Now"
+          games={buckets.live}
+          isLiveSection
+        />
+      )}
+
+      {/* Time-bucketed sections */}
+      {SECTIONS.map(({ key, label }) => {
+        const sg = sortGames(buckets[key]);
+        const firstDate = sg[0] ? fmtDate(sg[0]) : undefined;
+        return (
+          <FixtureSection
+            key={key}
+            label={label}
+            games={sg}
+            sectionDate={key !== 'today' ? firstDate : undefined}
+          />
+        );
+      })}
 
       {games.length === 0 && (
-        <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
-          <p className="text-4xl mb-4">🏆</p>
-          <p className="font-medium">No games available right now.</p>
-          <p className="text-sm mt-1">Live data syncs every 60 seconds.</p>
+        <div style={{ textAlign:'center', padding:'5rem 1rem', color:'var(--text-muted)' }}>
+          <div style={{ fontSize:'2.5rem', marginBottom:'0.75rem' }}>🏆</div>
+          <p style={{ fontWeight:600, color:'var(--text-secondary)' }}>No games right now</p>
+          <p style={{ fontSize:'0.8125rem', marginTop:'0.25rem' }}>Live data refreshes every 60 s</p>
         </div>
-      )}
-
-      {/* By sport */}
-      {games.length > 0 && (
-        <section className="space-y-6">
-          <h2 className="text-xl font-semibold">All Games by Sport</h2>
-          {groupBySport(games).map(({ sport, games: sg }) => (
-            <div key={sport} className="space-y-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                <span>{sportIcon(sport)}</span>
-                <span className="uppercase tracking-widest text-[10px]">{sport}</span>
-                <span className="ml-1 text-[10px]">({sg.length})</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {sortGames(sg).map(g => <GameCard key={g.id} game={g} compact />)}
-              </div>
-            </div>
-          ))}
-        </section>
       )}
     </main>
-  );
-}
-
-function groupBySport(games: Game[]) {
-  const map: Record<string, Game[]> = {};
-  for (const g of games) {
-    if (!map[g.sport]) map[g.sport] = [];
-    map[g.sport].push(g);
-  }
-  return Object.entries(map).map(([sport, games]) => ({ sport, games }));
-}
-
-// ── GameCard ──────────────────────────────────────────────────────────────────
-
-function GameCard({ game, compact = false }: { game: Game; compact?: boolean }) {
-  const badge = STATUS_BADGE[game.status];
-  const outcome = getPredictionOutcome(game);
-  const showScore = (isFinal(game.status) || isLive(game.status)) &&
-    game.homeScore !== undefined && game.awayScore !== undefined;
-
-  // Combine date + time into a single "Jun 28 · 7:30 PM ET" string
-  const displayDateTime = game.scheduledAt
-    ? (() => {
-        const d = new Date(game.scheduledAt);
-        const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
-        const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
-        return `${date} · ${time} ET`;
-      })()
-    : (() => {
-        const date = new Date(game.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        return game.time ? `${date} · ${game.time}` : date;
-      })();
-
-  const homeLeads = showScore && (game.homeScore! > game.awayScore!);
-  const awayLeads = showScore && (game.awayScore! > game.homeScore!);
-
-  const inner = (
-    <div
-      className="rounded-xl p-4 space-y-3 h-full transition-all"
-      style={{
-        background: 'var(--bg-elevated)',
-        border: isLive(game.status)
-          ? '1px solid rgba(239,68,68,0.3)'
-          : game.status === 'Postponed' || game.status === 'Cancelled'
-            ? '1px solid var(--border-subtle)'
-            : '1px solid var(--border-subtle)',
-        opacity: game.status === 'Cancelled' ? 0.6 : 1,
-      }}
-    >
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold truncate" style={{ color: 'var(--text-muted)' }}>
-          {game.league}
-        </span>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {badge ? (
-            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={badge.style}>
-              {badge.label}
-            </span>
-          ) : (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{displayDateTime}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Live clock */}
-      {isLive(game.status) && game.period && (
-        <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-          {game.clock ? `${game.clock} — ` : ''}P{game.period}
-        </div>
-      )}
-
-      {/* Teams */}
-      <div className="space-y-1.5">
-        <TeamRow
-          name={game.homeTeam.name}
-          abbr={game.homeTeam.abbreviation}
-          color={game.homeTeam.color}
-          score={showScore ? game.homeScore : undefined}
-          isWinner={isFinal(game.status) ? homeLeads : !compact && game.prediction.winner === game.homeTeam.name}
-          isLeading={isLive(game.status) && homeLeads}
-        />
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-          <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
-            {showScore ? '–' : 'vs'}
-          </span>
-          <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-        </div>
-        <TeamRow
-          name={game.awayTeam.name}
-          abbr={game.awayTeam.abbreviation}
-          color={game.awayTeam.color}
-          score={showScore ? game.awayScore : undefined}
-          isWinner={isFinal(game.status) ? awayLeads : !compact && game.prediction.winner === game.awayTeam.name}
-          isLeading={isLive(game.status) && awayLeads}
-        />
-      </div>
-
-      {/* Venue (non-compact only) */}
-      {!compact && game.venue && (
-        <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>
-          📍 {game.venue}
-        </p>
-      )}
-
-      {/* Confidence bar for upcoming games */}
-      {!compact && !showScore && game.prediction.confidence && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              AI: {game.prediction.winner.split(' ').slice(-1)[0]}
-            </span>
-            <span className="text-[10px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-              {game.prediction.confidence}%
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-surface)' }}>
-            <div className="h-full rounded-full transition-all"
-              style={{ width: `${game.prediction.confidence}%`, background: 'var(--accent)' }} />
-          </div>
-        </div>
-      )}
-
-      {/* Prediction outcome for final games */}
-      {outcome && (
-        <div
-          className="text-[10px] px-2 py-1.5 rounded-lg font-medium"
-          style={{
-            background: outcome.correct ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-            color: outcome.correct ? '#10b981' : '#ef4444',
-            border: `1px solid ${outcome.correct ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
-          }}
-        >
-          {outcome.label}
-        </div>
-      )}
-
-      {/* Odds (non-compact, upcoming only) */}
-      {!compact && !showScore && game.odds.current.home !== -110 && (
-        <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
-          <span>ML {game.odds.current.home > 0 ? '+' : ''}{game.odds.current.home}</span>
-          <span>Spread {game.odds.current.spread > 0 ? '+' : ''}{game.odds.current.spread}</span>
-        </div>
-      )}
-    </div>
-  );
-
-  const href = `/game/${game.id}`;
-  return (
-    <Link href={href} className="block h-full hover:opacity-90 transition-opacity">
-      {inner}
-    </Link>
-  );
-}
-
-function TeamRow({
-  name, abbr, color, score, isWinner, isLeading,
-}: {
-  name: string; abbr: string; color: string;
-  score?: number; isWinner?: boolean; isLeading?: boolean;
-}) {
-  const bold = isWinner || isLeading;
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-      <span
-        className="text-sm flex-1 truncate"
-        style={{ color: bold ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: bold ? 600 : 400 }}
-      >
-        {name}
-      </span>
-      {score !== undefined && (
-        <span
-          className="text-sm font-mono font-bold ml-auto shrink-0"
-          style={{ color: bold ? color : 'var(--text-secondary)' }}
-        >
-          {score}
-        </span>
-      )}
-      {bold && score === undefined && (
-        <span className="text-[10px] ml-auto font-bold" style={{ color: 'var(--accent-light)' }}>★</span>
-      )}
-    </div>
   );
 }

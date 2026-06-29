@@ -5,67 +5,72 @@ import SearchBox from '@/components/ui/SearchBox';
 import NotificationBell from '@/components/ui/NotificationBell';
 
 interface TopBarProps {
-  onMenuClick:     () => void;
+  onMenuClick:      () => void;
   sidebarCollapsed: boolean;
-  sidebarWidth:    string;
+  sidebarWidth:     string;
 }
 
-export function TopBar({ onMenuClick, sidebarCollapsed: _sidebarCollapsed, sidebarWidth }: TopBarProps) {
+export function TopBar({ onMenuClick, sidebarWidth }: TopBarProps) {
   return (
     <header
       className="fixed top-0 right-0 z-30 flex items-center gap-3 px-4"
       style={{
-        /* Left edge aligns with end of sidebar on desktop */
         left: 0,
         height: 'var(--topbar-h)',
-        background: 'rgba(7,7,14,0.90)',
-        backdropFilter: 'blur(16px)',
+        background: 'rgba(7,7,14,0.92)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border-subtle)',
       }}
     >
-      {/*
-       * Desktop sidebar spacer — keeps the topbar content right of the sidebar.
-       * Matches the spacer div in AppShell so search/controls align with page content.
-       */}
-      <div
-        className="hidden lg:block shrink-0 sidebar-trans"
-        style={{ width: sidebarWidth }}
-        aria-hidden
-      />
+      {/* Desktop spacer — aligns content with sidebar edge */}
+      <div className="hidden lg:block shrink-0 sidebar-trans" style={{ width: sidebarWidth }} aria-hidden />
 
       {/* Mobile hamburger */}
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-lg"
-        style={{ color: 'var(--text-secondary)' }}
+        className="lg:hidden p-1.5 rounded-md"
+        style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
         aria-label="Open navigation"
       >
-        <Menu size={18} />
+        <Menu size={17} />
       </button>
 
-      {/* Search with live autocomplete */}
+      {/* Search */}
       <SearchBox className="flex-1 max-w-xs lg:max-w-sm" />
 
       {/* Right controls */}
-      <div className="flex items-center gap-1 ml-auto">
+      <div className="flex items-center gap-1.5 ml-auto">
         <NotificationBell />
 
-        {/* User menu — will show session user once auth is wired */}
         <button
           aria-label="User menu"
-          className="flex items-center gap-1.5 h-8 px-2 rounded-lg transition-colors"
-          style={{ border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-strong)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)'; }}
+          className="flex items-center gap-1.5 rounded-md transition-all"
+          style={{
+            height: 30, padding: '0 0.5rem',
+            border: '1px solid var(--border-default)',
+            color: 'var(--text-secondary)',
+            background: 'transparent', cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-strong)';
+            (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-default)';
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+          }}
         >
-          <div
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-            style={{ background: 'var(--accent)' }}
-          >
+          <div style={{
+            width: 18, height: 18, borderRadius: '50%',
+            background: 'var(--accent)', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.5625rem', fontWeight: 800, color: '#fff',
+          }}>
             G
           </div>
-          <span className="text-xs hidden sm:block">Guest</span>
-          <ChevronDown size={11} />
+          <span style={{ fontSize: '0.75rem', display: 'none' }} className="sm:block">Guest</span>
+          <ChevronDown size={10} style={{ color: 'var(--text-muted)' }} />
         </button>
       </div>
     </header>
