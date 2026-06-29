@@ -100,22 +100,25 @@ function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?:
     };
   }
 
+  // offensiveRating and defensiveRating are in natural score units for each sport:
+  // NFL ~30 pts/game, NBA ~115 pts/game, MLB ~5 runs/game, NHL ~3 goals/game, Soccer ~2.5 goals/game
+  // Best estimate: average the team's offense against the opponent's allowed (defense)
+  const predHome = Math.max(0, Math.round((home.offensiveRating + away.defensiveRating) / 2));
+  const predAway = Math.max(0, Math.round((away.offensiveRating + home.defensiveRating) / 2));
+
   const winner = prob >= 50 ? home : away;
   return {
     winner: winner.name,
     winProbability: prob,
     confidence: conf,
-    predictedScore: {
-      home: Math.round(home.offensiveRating / (home.sport === 'NFL' ? 3.5 : home.sport === 'NBA' ? 1 : home.sport === 'MLB' ? 20 : 8)),
-      away: Math.round(away.offensiveRating / (away.sport === 'NFL' ? 3.5 : away.sport === 'NBA' ? 1 : away.sport === 'MLB' ? 20 : 8)),
-    },
-    expectedMargin: Math.abs(Math.round((home.eloRating - away.eloRating) / 40)),
+    predictedScore: { home: predHome, away: predAway },
+    expectedMargin: Math.abs(predHome - predAway),
     upsetProbability: Math.min(prob, 100 - prob),
     playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar: '',
     factors: [
       { label: 'ELO Edge', positive: home.eloRating >= away.eloRating, weight: 0.4, detail: `${home.eloRating} vs ${away.eloRating}` },
       { label: 'Home Field', positive: true, weight: 0.15, detail: 'Home advantage applied' },
-      { label: 'Momentum', positive: home.momentum >= away.momentum, weight: 0.2, detail: `${(home.momentum * 100).toFixed(0)}% vs ${(away.momentum * 100).toFixed(0)}%` },
+      { label: 'Momentum', positive: home.momentum >= away.momentum, weight: 0.2, detail: `${home.momentum}% vs ${away.momentum}%` },
     ],
     gameFlow: 'AI pre-game projection',
     monteCarloWinRate: prob,
