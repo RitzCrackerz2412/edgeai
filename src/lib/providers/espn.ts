@@ -146,7 +146,7 @@ export class ESPNProvider implements SportsDataProvider {
     try {
       scoreboard = await apiFetch<ESPNScoreboard>(
         `${BASE}/${path}/scoreboard?dates=${formatted}`,
-        { rateLimitKey: `espn-${path.split('/')[0]}`, timeoutMs: 8_000, retries: 2 },
+        { rateLimitKey: `espn-${path.replace(/\//g, '-')}`, timeoutMs: 8_000, retries: 2 },
       );
     } catch {
       return [];
