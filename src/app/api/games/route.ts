@@ -19,7 +19,7 @@ const VALID_SPORTS: Sport[] = [
   'NCAA Football', 'NCAA Basketball',
 ];
 
-const MAX_DAYS = 14;
+const MAX_DAYS = 21;
 
 function addDays(base: Date, n: number): string {
   const d = new Date(base);

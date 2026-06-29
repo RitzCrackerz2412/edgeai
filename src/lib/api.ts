@@ -49,9 +49,9 @@ export async function getUpcomingGames(filters?: {
 }): Promise<Game[]> {
   const includeRecent = filters?.includeRecent !== false; // default true
   const today = new Date();
-  // Fetch 2 past days + today + 7 ahead for a full rolling week of coverage
+  // Fetch 2 past days + today + 14 ahead — covers World Cup QF/SF/Final
   const dates: string[] = [];
-  for (let i = (includeRecent ? -2 : 0); i <= 7; i++) {
+  for (let i = (includeRecent ? -2 : 0); i <= 14; i++) {
     dates.push(addDays(today, i));
   }
 
@@ -89,21 +89,115 @@ export async function getUpcomingGames(filters?: {
   return games;
 }
 
-export async function getGameById(id: string): Promise<Game | null> {
-  // Check ESPN live games first, then fall back to mock
-  if (id.startsWith('espn-')) {
-    const espnId = id.slice(5);
-    const today = new Date().toISOString().split('T')[0];
-    try {
-      const provider = getProviders().sports;
-      for (const sport of LIVE_SPORTS) {
-        const rawGames = await provider.getGames(sport, today).catch(() => []);
-        const match = rawGames.find(r => r.id === espnId);
-        if (match) return rawGameToGame(match);
+// League name (from ESPN raw game ID) → ESPN API path
+const LEAGUE_ESPN_PATH: Record<string, string> = {
+  NFL: 'football/nfl',
+  NBA: 'basketball/nba',
+  MLB: 'baseball/mlb',
+  NHL: 'hockey/nhl',
+  'NCAA Football':    'football/college-football',
+  'NCAA Basketball':  'basketball/mens-college-basketball',
+  'EPL':              'soccer/eng.1',
+  'World Cup':        'soccer/fifa.world',
+  'La Liga':          'soccer/esp.1',
+  'Bundesliga':       'soccer/ger.1',
+  'Serie A':          'soccer/ita.1',
+  'Ligue 1':          'soccer/fra.1',
+  'MLS':              'soccer/usa.1',
+  'NWSL':             'soccer/usa.nwsl',
+  'Liga MX':          'soccer/mex.1',
+  'Eredivisie':       'soccer/ned.1',
+  'Primeira Liga':    'soccer/por.1',
+  'Champions League': 'soccer/uefa.champions',
+  'Europa League':    'soccer/uefa.europa',
+  'Conference League':'soccer/uefa.conference',
+  'Club World Cup':   'soccer/fifa.cwc',
+  'Copa Libertadores':'soccer/conmebol.libertadores',
+  'Copa Sudamericana':'soccer/conmebol.sudamericana',
+  'Nations League':   'soccer/uefa.nations',
+};
+
+const ESPN_SPORT_MAP: Record<string, Sport> = {
+  football: 'NFL', basketball: 'NBA', baseball: 'MLB', hockey: 'NHL', soccer: 'Soccer',
+};
+
+// Fetch a single game by ESPN event ID via the summary endpoint.
+// One HTTP call, no in-process rate limiter, works for any date.
+async function fetchEspnGameByEventId(leagueName: string, eventId: string): Promise<RawGame | null> {
+  const path = LEAGUE_ESPN_PATH[leagueName];
+  if (!path) return null;
+  try {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${path}/summary?event=${eventId}`;
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) { console.error(`[getGameById] ESPN ${r.status} for ${url}`); return null; }
+    const data = await r.json();
+
+    const comp = data?.header?.competitions?.[0];
+    if (!comp) return null;
+
+    const home = comp.competitors?.find((c: { homeAway: string }) => c.homeAway === 'home');
+    const away = comp.competitors?.find((c: { homeAway: string }) => c.homeAway === 'away');
+    if (!home || !away) return null;
+
+    const sportKey = path.split('/')[0];
+    const sport: Sport =
+      leagueName === 'NCAA Football' ? 'NCAA Football' :
+      leagueName === 'NCAA Basketball' ? 'NCAA Basketball' :
+      ESPN_SPORT_MAP[sportKey] ?? 'NFL';
+
+    const normStatus = (name: string): RawGame['status'] => {
+      switch (name) {
+        case 'STATUS_SCHEDULED': case 'STATUS_PREGAME': return 'scheduled';
+        case 'STATUS_IN_PROGRESS': case 'STATUS_FIRST_HALF': case 'STATUS_SECOND_HALF':
+        case 'STATUS_HALFTIME': case 'STATUS_END_PERIOD': case 'STATUS_OVERTIME': return 'inprogress';
+        case 'STATUS_FINAL': case 'STATUS_FINAL_OT': case 'STATUS_FINAL_SO':
+        case 'STATUS_FULL_TIME': return 'closed';
+        case 'STATUS_POSTPONED': return 'postponed';
+        case 'STATUS_CANCELLED': case 'STATUS_CANCELED': return 'cancelled';
+        default: return 'scheduled';
       }
-    } catch { /* fall through */ }
+    };
+
+    return {
+      id: `${leagueName}-${eventId}`,
+      sport,
+      league: leagueName,
+      homeTeamId: home.team?.id ?? '',
+      awayTeamId: away.team?.id ?? '',
+      homeTeamName: home.team?.displayName ?? '',
+      awayTeamName: away.team?.displayName ?? '',
+      scheduledAt: comp.date ?? '',
+      venue: comp.venue?.fullName ?? 'Unknown Venue',
+      venueId: comp.venue?.id ?? 'unknown',
+      venueCity: comp.venue?.address?.city ?? '',
+      venueState: comp.venue?.address?.state ?? '',
+      venueCountry: comp.venue?.address?.country ?? 'USA',
+      status: normStatus(comp.status?.type?.name ?? ''),
+      period: comp.status?.period || undefined,
+      clock: comp.status?.displayClock || undefined,
+      homeScore: home.score !== undefined && home.score !== '' ? parseInt(home.score, 10) : undefined,
+      awayScore: away.score !== undefined && away.score !== '' ? parseInt(away.score, 10) : undefined,
+    };
+  } catch {
+    return null;
   }
-  return MOCK_GAMES.find(g => g.id === id) ?? null;
+}
+
+export async function getGameById(id: string): Promise<Game | null> {
+  // Params can arrive URL-encoded (e.g. "espn-World%20Cup-760487") — always decode first
+  const decodedId = decodeURIComponent(id);
+  if (decodedId.startsWith('espn-')) {
+    const rawId = decodedId.slice(5); // e.g. "MLB-401682672" or "World Cup-760487"
+    // League name = everything before the last hyphen-separated numeric ID
+    const lastHyphen = rawId.lastIndexOf('-');
+    const leagueName = lastHyphen > 0 ? rawId.slice(0, lastHyphen) : '';
+    const eventId    = lastHyphen > 0 ? rawId.slice(lastHyphen + 1) : rawId;
+
+    // Single summary-endpoint call — no rate limiter, works for any date
+    const raw = await fetchEspnGameByEventId(leagueName, eventId);
+    if (raw) return rawGameToGame(raw);
+  }
+  return MOCK_GAMES.find(g => g.id === decodedId) ?? null;
 }
 
 // ── Teams ────────────────────────────────────────────────────────
