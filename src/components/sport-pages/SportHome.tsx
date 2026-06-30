@@ -64,7 +64,14 @@ export default function SportHome({ sportId }: { sportId: string }) {
         />
         <div className="relative">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-4xl">{config.emoji}</span>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: `${config.color}22`,
+              border: `1px solid ${config.color}44`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <div style={{ width: 16, height: 16, borderRadius: 3, background: config.color }} />
+            </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {config.fullName}
@@ -87,13 +94,19 @@ export default function SportHome({ sportId }: { sportId: string }) {
         </div>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {quickStats.map(s => (
-          <div key={s.label} className="rounded-xl p-4 text-center"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
-            <p className="text-2xl font-bold font-mono" style={{ color: config.color }}>{s.value}</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+      {/* Quick stats — compact 4-column bar */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
+        background: 'var(--bg-card)', border: '1px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden',
+      }}>
+        {quickStats.map((s, i) => (
+          <div key={s.label} style={{
+            padding: '0.75rem 0.875rem',
+            borderRight: i < quickStats.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+          }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{s.label}</p>
+            <p className="text-xl font-bold font-mono" style={{ color: config.color }}>{s.value}</p>
           </div>
         ))}
       </div>

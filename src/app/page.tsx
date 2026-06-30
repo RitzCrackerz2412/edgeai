@@ -75,7 +75,7 @@ export default async function HomePage() {
       {/* ── Model Metrics Bar ─────────────────────────────────────── */}
       <div className="metrics-bar" style={{ marginBottom: '1.25rem' }}>
         {[
-          { label: 'Overall Accuracy', value: accuracy.overall, suffix: '%', decimals: 1, Icon: Target, accent: true },
+          { label: 'Accuracy', value: accuracy.overall, suffix: '%', decimals: 1, Icon: Target, accent: true },
           { label: 'Last 30 Days',     value: accuracy.last30Days, suffix: '%', decimals: 1, Icon: TrendingUp, sub: '↑2.8%' },
           { label: 'Predictions',      value: accuracy.totalPredictions, suffix: '', decimals: 0, Icon: Brain, sub: '13 sports' },
           { label: 'ROC AUC',          value: accuracy.rocAuc, suffix: '', decimals: 3, Icon: Zap, sub: `Brier ${accuracy.brierScore}` },
@@ -199,7 +199,7 @@ export default async function HomePage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1875rem' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                                    {g.homeTeam.abbreviation} vs {g.awayTeam.abbreviation}
+                                    {g.homeTeam.name.split(' ').slice(-1)[0]} vs {g.awayTeam.name.split(' ').slice(-1)[0]}
                                   </span>
                                   <span style={{ fontSize: '0.625rem', color: SPORT_COLOR[g.sport] ?? 'var(--text-muted)' }}>
                                     {g.league}

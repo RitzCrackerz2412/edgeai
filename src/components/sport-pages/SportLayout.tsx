@@ -34,7 +34,13 @@ export default function SportLayout({
           className="flex items-center gap-3 px-4 sm:px-6 py-2"
           style={{ borderBottom: `2px solid ${config.color}` }}
         >
-          <span className="text-lg leading-none">{config.emoji}</span>
+          <span style={{
+            width: 22, height: 22, borderRadius: 5, flexShrink: 0,
+            background: `${config.color}22`, border: `1px solid ${config.color}44`,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: config.color, display: 'block' }} />
+          </span>
           <div>
             <p className="text-sm font-bold leading-tight" style={{ color: config.color }}>
               {config.name}

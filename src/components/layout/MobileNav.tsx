@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Shield, User, BarChart2, Search } from 'lucide-react';
+import { LayoutGrid, CalendarDays, User, BarChart2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
-  { href: '/',         label: 'Games',    icon: LayoutGrid, exact: true },
-  { href: '/team',     label: 'Teams',    icon: Shield },
+  { href: '/',         label: 'Home',     icon: LayoutGrid, exact: true },
+  { href: '/games',    label: 'Games',    icon: CalendarDays },
   { href: '/player',   label: 'Players',  icon: User },
   { href: '/accuracy', label: 'Accuracy', icon: BarChart2 },
   { href: '/search',   label: 'Search',   icon: Search },

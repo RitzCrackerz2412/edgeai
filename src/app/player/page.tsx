@@ -158,12 +158,14 @@ export default function PlayersPage() {
                 >
                   {player.sport}
                 </div>
-                <div
-                  className="text-xs px-2 py-0.5 rounded"
-                  style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}
-                >
-                  {player.league}
-                </div>
+                {player.league !== player.sport && (
+                  <div
+                    className="text-xs px-2 py-0.5 rounded"
+                    style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}
+                  >
+                    {player.league}
+                  </div>
+                )}
               </div>
 
               <div

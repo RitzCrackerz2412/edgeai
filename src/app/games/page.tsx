@@ -180,7 +180,8 @@ function FixtureRow({ game: g }: { game: Game }) {
           color:      (homeLeads || (!scored && winHome)) ? 'var(--text-primary)' : 'var(--text-secondary)',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         }}>
-          {g.homeTeam.name}
+          <span className="hidden sm:inline">{g.homeTeam.name}</span>
+          <span className="sm:hidden">{g.homeTeam.name.split(' ').slice(-1)[0]}</span>
         </span>
       </div>
 
@@ -220,7 +221,8 @@ function FixtureRow({ game: g }: { game: Game }) {
           color:      (awayLeads || (!scored && !winHome)) ? 'var(--text-primary)' : 'var(--text-secondary)',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'right',
         }}>
-          {g.awayTeam.name}
+          <span className="hidden sm:inline">{g.awayTeam.name}</span>
+          <span className="sm:hidden">{g.awayTeam.name.split(' ').slice(-1)[0]}</span>
         </span>
         <span style={{ width:7, height:7, borderRadius:'50%', background:g.awayTeam.color, flexShrink:0, display:'inline-block' }} />
       </div>

@@ -5,12 +5,35 @@ import { usePathname } from 'next/navigation';
 import { ChevronRight, Home } from 'lucide-react';
 
 const SEGMENT_LABELS: Record<string, string> = {
-  game:     'Games',
-  team:     'Teams',
-  player:   'Players',
-  accuracy: 'Accuracy',
-  search:   'Search',
-  admin:    'Admin',
+  game:           'Games',
+  games:          'Games',
+  team:           'Teams',
+  player:         'Players',
+  accuracy:       'Accuracy',
+  search:         'Search',
+  admin:          'Admin',
+  history:        'History',
+  matchup:        'Matchup',
+  compare:        'Compare',
+  teams:          'Teams',
+  players:        'Players',
+  standings:      'Standings',
+  schedule:       'Schedule',
+  leaderboard:    'Leaderboard',
+  predictions:    'Predictions',
+  settings:       'Settings',
+  monitor:        'Monitor',
+  model:          'Model',
+  league:         'League',
+  tournament:     'Tournament',
+  live:           'Live',
+  analyst:        'Analyst',
+  'power-rankings': 'Power Rankings',
+  // sport home pages
+  nfl:    'NFL',   nba:    'NBA',   mlb:    'MLB',   nhl:    'NHL',
+  soccer: 'Soccer', ncaaf: 'NCAAF', ncaab: 'NCAAB', ufc: 'UFC',
+  boxing: 'Boxing', tennis: 'Tennis', f1: 'Formula 1',
+  cricket: 'Cricket', esports: 'Esports',
 };
 
 export function Breadcrumbs() {
