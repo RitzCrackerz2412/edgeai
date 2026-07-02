@@ -7,6 +7,8 @@
 import type { Game, Sport, Team, Prediction } from '../types';
 import type { RawGame } from '../providers/types';
 import { ALL_TEAMS } from './teams/index';
+import { resultsStore } from '../results/store';
+import { enrichTeam } from '../results/enrichTeam';
 
 // ── Team lookup ───────────────────────────────────────────────────────────────
 
@@ -135,7 +137,10 @@ function predictScores(home: Team, away: Team): { home: number; away: number } {
 
 // ── ELO prediction ────────────────────────────────────────────────────────────
 
-function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?: number, status?: Game['status']): Prediction {
+function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayScore?: number, status?: Game['status']): Prediction {
+  // Use live-enriched ratings for win probability when available
+  const home = enrichTeam(rawHome);
+  const away = enrichTeam(rawAway);
   const prob = Math.round((1 / (1 + Math.pow(10, (away.eloRating - home.eloRating) / 400))) * 100);
   const conf = Math.min(95, Math.round(50 + (Math.abs(home.eloRating - away.eloRating) / 400) * 45));
   const isFinal = status === 'Final' || status === 'Final/OT' || status === 'Final/SO';
@@ -218,6 +223,37 @@ export function rawGameToGame(raw: RawGame): Game | null {
     cancelled:  'Cancelled',
   };
   const status = statusMap[raw.status] ?? 'Upcoming';
+
+  // Record final game results so future predictions use real accumulated data
+  if (
+    (status === 'Final' || status === 'Final/OT' || status === 'Final/SO') &&
+    raw.homeScore !== undefined &&
+    raw.awayScore !== undefined &&
+    homeTeam && awayTeam  // only record when we matched real teams (not fallbacks)
+  ) {
+    const gameId = `espn-${raw.id}`;
+    if (!resultsStore.hasGame(gameId)) {
+      const dateStr2 = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(new Date(raw.scheduledAt));
+      resultsStore.recordGame(
+        {
+          gameId,
+          sport: raw.sport,
+          league: raw.league,
+          homeTeamId: homeTeam.id,
+          awayTeamId: awayTeam.id,
+          homeScore: raw.homeScore,
+          awayScore: raw.awayScore,
+          date: dateStr2,
+          status: raw.status,
+          recordedAt: new Date().toISOString(),
+        },
+        homeTeam.eloRating,
+        awayTeam.eloRating,
+      );
+    }
+  }
 
   const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status);
 
