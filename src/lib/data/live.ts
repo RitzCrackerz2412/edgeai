@@ -76,6 +76,63 @@ function makeFallbackTeam(sport: Sport, league: string, displayName: string, abb
   };
 }
 
+// ── Sport-aware scoring config ────────────────────────────────────────────────
+// leagueAvg:  typical points/goals per team per game
+// homeAdv:    points added to home team score for home-field advantage
+// eloFactor:  per-400-ELO-points contribution as fraction of leagueAvg
+// noiseRange: max per-matchup spread units (half applied each side)
+
+const SPORT_SCORING: Record<string, { leagueAvg: number; homeAdv: number; eloFactor: number; noiseRange: number }> = {
+  NFL:    { leagueAvg: 23.0,  homeAdv: 2.5,  eloFactor: 0.08, noiseRange: 6 },
+  NBA:    { leagueAvg: 114.0, homeAdv: 3.3,  eloFactor: 0.02, noiseRange: 8 },
+  MLB:    { leagueAvg: 4.5,   homeAdv: 0.18, eloFactor: 0.04, noiseRange: 1 },
+  NHL:    { leagueAvg: 3.0,   homeAdv: 0.15, eloFactor: 0.04, noiseRange: 1 },
+  Soccer: { leagueAvg: 1.4,   homeAdv: 0.22, eloFactor: 0.05, noiseRange: 1 },
+  NCAAF:  { leagueAvg: 26.0,  homeAdv: 3.5,  eloFactor: 0.09, noiseRange: 7 },
+  NCAAB:  { leagueAvg: 72.0,  homeAdv: 3.8,  eloFactor: 0.03, noiseRange: 5 },
+};
+
+// Deterministic per-matchup noise using a simple string hash.
+// Same two teams always get the same spread, making predictions stable but varied.
+function matchupHash(a: string, b: string): number {
+  const s = a + '|' + b;
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function predictScores(home: Team, away: Team): { home: number; away: number } {
+  const cfg = SPORT_SCORING[home.sport as string];
+  if (!cfg) return { home: 0, away: 0 }; // individual sports (UFC, Tennis, etc.)
+
+  // Additive model: start from each team's own average scoring rate, then adjust up/down
+  // based on how the opponent's defense compares to the league average.
+  // (leagueAvg - away.defensiveRating) > 0 means opponent has poor defense → home scores more
+  // (leagueAvg - away.defensiveRating) < 0 means opponent has elite defense → home scores less
+  const homeBase = home.offensiveRating + (cfg.leagueAvg - away.defensiveRating) * 0.5;
+  const awayBase = away.offensiveRating + (cfg.leagueAvg - home.defensiveRating) * 0.5;
+
+  // ELO edge: 400-point gap produces eloFactor * leagueAvg additional points of total margin
+  const eloDiff = home.eloRating - away.eloRating;
+  const eloEdge = (eloDiff / 400) * cfg.leagueAvg * cfg.eloFactor;
+
+  // Momentum tilt: recent form on top of structural ratings (small signal)
+  const momAdj = ((home.momentum - away.momentum) / 100) * cfg.leagueAvg * 0.02;
+
+  // Deterministic per-matchup fingerprint so every game pair has its own spread
+  const hash  = matchupHash(home.id, away.id);
+  const noise = ((hash % (cfg.noiseRange * 2 + 1)) - cfg.noiseRange) * 0.5;
+
+  let predHome = homeBase + cfg.homeAdv + eloEdge / 2 + momAdj / 2 + noise;
+  let predAway = awayBase - cfg.homeAdv * 0.5 - eloEdge / 2 - momAdj / 2 - noise * 0.6;
+
+  const floor = cfg.leagueAvg * 0.30;
+  return {
+    home: Math.round(Math.max(floor, predHome)),
+    away: Math.round(Math.max(floor, predAway)),
+  };
+}
+
 // ── ELO prediction ────────────────────────────────────────────────────────────
 
 function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?: number, status?: Game['status']): Prediction {
@@ -100,12 +157,9 @@ function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?:
     };
   }
 
-  // offensiveRating and defensiveRating are in natural score units for each sport:
-  // NFL ~30 pts/game, NBA ~115 pts/game, MLB ~5 runs/game, NHL ~3 goals/game, Soccer ~2.5 goals/game
-  // Best estimate: average the team's offense against the opponent's allowed (defense)
-  const predHome = Math.max(0, Math.round((home.offensiveRating + away.defensiveRating) / 2));
-  const predAway = Math.max(0, Math.round((away.offensiveRating + home.defensiveRating) / 2));
+  const { home: predHome, away: predAway } = predictScores(home, away);
 
+  const eloDiff = home.eloRating - away.eloRating;
   const winner = prob >= 50 ? home : away;
   return {
     winner: winner.name,
@@ -116,9 +170,10 @@ function buildPrediction(home: Team, away: Team, homeScore?: number, awayScore?:
     upsetProbability: Math.min(prob, 100 - prob),
     playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar: '',
     factors: [
-      { label: 'ELO Edge', positive: home.eloRating >= away.eloRating, weight: 0.4, detail: `${home.eloRating} vs ${away.eloRating}` },
-      { label: 'Home Field', positive: true, weight: 0.15, detail: 'Home advantage applied' },
-      { label: 'Momentum', positive: home.momentum >= away.momentum, weight: 0.2, detail: `${home.momentum}% vs ${away.momentum}%` },
+      { label: 'ELO Edge',    positive: eloDiff >= 0,                        weight: 0.4, detail: `${home.eloRating} vs ${away.eloRating} (${eloDiff > 0 ? '+' : ''}${eloDiff})` },
+      { label: 'Home Field',  positive: true,                                 weight: 0.15, detail: 'Home advantage applied' },
+      { label: 'Momentum',    positive: home.momentum >= away.momentum,       weight: 0.2, detail: `${home.momentum} vs ${away.momentum}` },
+      { label: 'Off/Def Edge',positive: home.offensiveRating - home.defensiveRating >= away.offensiveRating - away.defensiveRating, weight: 0.25, detail: `Net +${(home.offensiveRating - home.defensiveRating).toFixed(1)} vs +${(away.offensiveRating - away.defensiveRating).toFixed(1)}` },
     ],
     gameFlow: 'AI pre-game projection',
     monteCarloWinRate: prob,
