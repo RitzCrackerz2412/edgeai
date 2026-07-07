@@ -114,18 +114,40 @@ export default async function GamePage({ params }: Props) {
           )}
         </div>
 
-        {/* Teams + predicted score */}
+        {/* Teams + scores */}
         <div className="flex items-center gap-6 mb-6">
           <TeamBlock team={homeTeam} isHome label="Home" isWinner={winnerIsHome} />
           <div className="flex flex-col items-center flex-1 gap-1">
-            <div className="flex items-baseline gap-2 text-4xl font-black text-mono">
-              <span style={{ color: homeTeam.color }}>{prediction.predictedScore.home}</span>
-              <span className="text-xl" style={{ color: 'var(--text-muted)' }}>–</span>
-              <span style={{ color: awayTeam.color }}>{prediction.predictedScore.away}</span>
-            </div>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {game.status === 'Final' ? 'Final score' : 'Predicted score'}
-            </span>
+            {isFinal && game.homeScore !== undefined && game.awayScore !== undefined ? (
+              <>
+                {/* Final score */}
+                <div className="flex items-baseline gap-2 text-4xl font-black font-mono">
+                  <span style={{ color: homeTeam.color }}>{game.homeScore}</span>
+                  <span className="text-xl" style={{ color: 'var(--text-muted)' }}>–</span>
+                  <span style={{ color: awayTeam.color }}>{game.awayScore}</span>
+                </div>
+                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Final score</span>
+                {/* Predicted score comparison */}
+                <div
+                  className="mt-2 px-3 py-1.5 rounded-lg flex items-center gap-2"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>EdgeAI predicted</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: homeTeam.color }}>{prediction.predictedScore.home}</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>–</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: awayTeam.color }}>{prediction.predictedScore.away}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2 text-4xl font-black font-mono">
+                  <span style={{ color: homeTeam.color }}>{prediction.predictedScore.home}</span>
+                  <span className="text-xl" style={{ color: 'var(--text-muted)' }}>–</span>
+                  <span style={{ color: awayTeam.color }}>{prediction.predictedScore.away}</span>
+                </div>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Predicted score</span>
+              </>
+            )}
           </div>
           <TeamBlock team={awayTeam} isHome={false} label="Away" isWinner={!winnerIsHome} />
         </div>

@@ -148,11 +148,13 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
 
   if (isFinal && homeScore !== undefined && awayScore !== undefined) {
     const winner = homeScore > awayScore ? home : away;
+    // Compute what our model would have predicted pre-game so the UI can compare
+    const { home: predHome, away: predAway } = predictScores(home, away);
     return {
       winner: winner.name,
       winProbability: homeScore > awayScore ? prob : 100 - prob,
       confidence: conf,
-      predictedScore: { home: homeScore, away: awayScore },
+      predictedScore: { home: predHome, away: predAway },
       expectedMargin: Math.abs(homeScore - awayScore),
       upsetProbability: Math.min(prob, 100 - prob),
       playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar: '',
