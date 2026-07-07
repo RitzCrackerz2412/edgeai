@@ -64,6 +64,8 @@ export interface Prediction {
   gameFlow: string;
   monteCarloWinRate: number;
   bayesianProbability: number;
+  /** Prediction market comparison — populated when odds data is available */
+  marketAnalysis?: import('./markets/types').MarketAnalysis;
 }
 
 export interface Game {

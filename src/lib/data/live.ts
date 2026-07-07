@@ -5,10 +5,11 @@
  */
 
 import type { Game, Sport, Team, Prediction } from '../types';
-import type { RawGame } from '../providers/types';
+import type { RawGame, RawOdds } from '../providers/types';
 import { ALL_TEAMS } from './teams/index';
 import { resultsStore } from '../results/store';
 import { enrichTeam } from '../results/enrichTeam';
+import { analyzeMarket } from '../markets/analyzer';
 
 // ── Team lookup ───────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ function predictScores(home: Team, away: Team): { home: number; away: number } {
 
 // ── ELO prediction ────────────────────────────────────────────────────────────
 
-function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayScore?: number, status?: Game['status']): Prediction {
+function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayScore?: number, status?: Game['status'], rawOdds?: RawOdds | null): Prediction {
   // Use live-enriched ratings for win probability when available
   const home = enrichTeam(rawHome);
   const away = enrichTeam(rawAway);
@@ -165,24 +166,39 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
   const { home: predHome, away: predAway } = predictScores(home, away);
 
   const eloDiff = home.eloRating - away.eloRating;
-  const winner = prob >= 50 ? home : away;
+  const winner  = prob >= 50 ? home : away;
+
+  const factors: Prediction['factors'] = [
+    { label: 'ELO Edge',     positive: eloDiff >= 0,                             weight: 0.4,  detail: `${home.eloRating} vs ${away.eloRating} (${eloDiff > 0 ? '+' : ''}${eloDiff})` },
+    { label: 'Home Field',   positive: true,                                      weight: 0.15, detail: 'Home advantage applied' },
+    { label: 'Momentum',     positive: home.momentum >= away.momentum,            weight: 0.2,  detail: `${home.momentum} vs ${away.momentum}` },
+    { label: 'Off/Def Edge', positive: home.offensiveRating - home.defensiveRating >= away.offensiveRating - away.defensiveRating, weight: 0.25, detail: `Net +${(home.offensiveRating - home.defensiveRating).toFixed(1)} vs +${(away.offensiveRating - away.defensiveRating).toFixed(1)}` },
+  ];
+
+  // Build a partial game object for market analyzer (avoids circular construction)
+  const partialGame = {
+    homeTeam: rawHome, awayTeam: rawAway,
+    prediction: { factors, winProbability: prob },
+  } as unknown as Game;
+
+  const marketAnalysis = analyzeMarket(partialGame, prob, rawOdds ?? null);
+
+  // Apply market-based confidence adjustment (capped to ±10pp)
+  const adjustedConf = Math.min(95, Math.max(20, conf + marketAnalysis.confidenceAdjustment));
+
   return {
     winner: winner.name,
     winProbability: prob,
-    confidence: conf,
+    confidence: adjustedConf,
     predictedScore: { home: predHome, away: predAway },
     expectedMargin: Math.abs(predHome - predAway),
     upsetProbability: Math.min(prob, 100 - prob),
     playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar: '',
-    factors: [
-      { label: 'ELO Edge',    positive: eloDiff >= 0,                        weight: 0.4, detail: `${home.eloRating} vs ${away.eloRating} (${eloDiff > 0 ? '+' : ''}${eloDiff})` },
-      { label: 'Home Field',  positive: true,                                 weight: 0.15, detail: 'Home advantage applied' },
-      { label: 'Momentum',    positive: home.momentum >= away.momentum,       weight: 0.2, detail: `${home.momentum} vs ${away.momentum}` },
-      { label: 'Off/Def Edge',positive: home.offensiveRating - home.defensiveRating >= away.offensiveRating - away.defensiveRating, weight: 0.25, detail: `Net +${(home.offensiveRating - home.defensiveRating).toFixed(1)} vs +${(away.offensiveRating - away.defensiveRating).toFixed(1)}` },
-    ],
+    factors,
     gameFlow: 'AI pre-game projection',
     monteCarloWinRate: prob,
     bayesianProbability: prob,
+    marketAnalysis,
   };
 }
 
@@ -255,7 +271,7 @@ export function rawGameToGame(raw: RawGame): Game | null {
     }
   }
 
-  const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status);
+  const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status, raw.odds ?? null);
 
   return {
     id: `espn-${raw.id}`,

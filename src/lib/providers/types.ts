@@ -21,6 +21,8 @@ export interface RawGame {
   clock?: string;
   homeScore?: number;
   awayScore?: number;
+  /** Consensus odds attached by an odds provider, if available */
+  odds?: RawOdds;
 }
 
 export interface RawTeamStats {

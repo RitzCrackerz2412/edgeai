@@ -18,6 +18,7 @@ import { MatchupTable } from '@/components/analysis/MatchupTable';
 import { GameContextCard } from '@/components/analysis/GameContextCard';
 import { PredictionSimulator } from '@/components/analysis/PredictionSimulator';
 import { MatchReview } from '@/components/analysis/MatchReview';
+import { MarketComparison } from '@/components/analysis/MarketComparison';
 import { formatDate, sportIcon } from '@/lib/utils';
 import { ArrowLeft, Calendar, MapPin, Wind, CheckCircle } from 'lucide-react';
 import type { Team } from '@/lib/types';
@@ -215,6 +216,11 @@ export default async function GamePage({ params }: Props) {
           <BettingIntelligence game={game} />
         </Card>
       </div>
+
+      {/* Prediction Market Intelligence */}
+      <Card title="Prediction Market Intelligence" elevated>
+        <MarketComparison game={game} />
+      </Card>
 
       {/* Prediction Simulator */}
       {simConfig ? (
