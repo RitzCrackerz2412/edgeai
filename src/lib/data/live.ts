@@ -146,10 +146,17 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
   const conf = Math.min(95, Math.round(50 + (Math.abs(home.eloRating - away.eloRating) / 400) * 45));
   const isFinal = status === 'Final' || status === 'Final/OT' || status === 'Final/SO';
 
+  // Compute model-predicted scores and align their direction with ELO winner.
+  // ELO is the authoritative pick — if the score model points the other way,
+  // swap scores so the predicted winner always has the higher predicted score.
+  let { home: predHome, away: predAway } = predictScores(home, away);
+  const eloFavorsHome = prob >= 50;
+  if (eloFavorsHome !== (predHome >= predAway)) {
+    [predHome, predAway] = [predAway, predHome];
+  }
+
   if (isFinal && homeScore !== undefined && awayScore !== undefined) {
     const winner = homeScore > awayScore ? home : away;
-    // Compute what our model would have predicted pre-game so the UI can compare
-    const { home: predHome, away: predAway } = predictScores(home, away);
     return {
       winner: winner.name,
       winProbability: homeScore > awayScore ? prob : 100 - prob,
@@ -163,17 +170,6 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
       monteCarloWinRate: prob,
       bayesianProbability: prob,
     };
-  }
-
-  let { home: predHome, away: predAway } = predictScores(home, away);
-
-  // ELO-based win probability is the authoritative pick. If the score model's
-  // direction contradicts it (e.g. score says home wins but ELO says away wins),
-  // swap the scores so both signals agree — the magnitude stays meaningful.
-  const eloFavorsHome = prob >= 50;
-  const scoreFavorsHome = predHome >= predAway;
-  if (eloFavorsHome !== scoreFavorsHome) {
-    [predHome, predAway] = [predAway, predHome];
   }
 
   const eloDiff = home.eloRating - away.eloRating;
