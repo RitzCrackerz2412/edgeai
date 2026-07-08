@@ -165,7 +165,16 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
     };
   }
 
-  const { home: predHome, away: predAway } = predictScores(home, away);
+  let { home: predHome, away: predAway } = predictScores(home, away);
+
+  // ELO-based win probability is the authoritative pick. If the score model's
+  // direction contradicts it (e.g. score says home wins but ELO says away wins),
+  // swap the scores so both signals agree — the magnitude stays meaningful.
+  const eloFavorsHome = prob >= 50;
+  const scoreFavorsHome = predHome >= predAway;
+  if (eloFavorsHome !== scoreFavorsHome) {
+    [predHome, predAway] = [predAway, predHome];
+  }
 
   const eloDiff = home.eloRating - away.eloRating;
   const winner  = prob >= 50 ? home : away;
