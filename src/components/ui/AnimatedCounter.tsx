@@ -19,14 +19,20 @@ export function AnimatedCounter({
   duration = 1200,
   className,
 }: AnimatedCounterProps) {
-  const [display, setDisplay] = useState(0);
+  // Initialize with the real value so SSR / static pages render the correct number
+  // rather than "0". Animation only plays on subsequent value changes.
+  const [display, setDisplay] = useState(value);
+  const prevValue = useRef(value);
   const frameRef = useRef<number>(0);
   const startRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const start = 0;
+    const start = prevValue.current;
     const end = value;
+    prevValue.current = value;
+    if (start === end) return; // nothing to animate
 
+    startRef.current = null;
     const tick = (timestamp: number) => {
       if (!startRef.current) startRef.current = timestamp;
       const elapsed = timestamp - startRef.current;

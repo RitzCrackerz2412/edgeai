@@ -6,10 +6,44 @@ interface BettingIntelligenceProps {
   game: Game;
 }
 
+function isPlaceholderOdds(odds: Game['odds']): boolean {
+  return (
+    odds.current.home === -110 && odds.current.away === -110 &&
+    odds.opening.home === -110 && odds.opening.away === -110 &&
+    odds.publicBettingPct.home === 50 && odds.publicBettingPct.away === 50
+  );
+}
+
 export function BettingIntelligence({ game }: BettingIntelligenceProps) {
   const { odds, homeTeam, awayTeam, prediction } = game;
+  const noOdds = isPlaceholderOdds(odds);
   const lineMove = odds.current.spread - odds.opening.spread;
   const evPositive = odds.expectedValue > 0;
+
+  if (noOdds) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Market analysis for informational purposes only. EdgeAI does not encourage or facilitate gambling.
+        </p>
+        <div
+          className="rounded-xl px-4 py-6 flex flex-col items-center gap-2 text-center"
+          style={{ background: 'var(--bg-elevated)', border: '1px dashed var(--border-subtle)' }}
+        >
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>No Market Data</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Configure <code className="font-mono">ODDS_API_KEY</code> to enable live moneylines, spreads, and public/sharp money tracking.
+          </p>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span style={{ color: 'var(--text-muted)' }}>Model pick</span>
+          <span style={{ color: 'var(--text-primary)' }}>
+            {prediction.winner} ({prediction.winProbability.toFixed(1)}%)
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

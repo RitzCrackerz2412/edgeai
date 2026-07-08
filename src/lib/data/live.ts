@@ -175,11 +175,14 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
   const eloDiff = home.eloRating - away.eloRating;
   const winner  = prob >= 50 ? home : away;
 
+  const netHome = home.offensiveRating - home.defensiveRating;
+  const netAway = away.offensiveRating - away.defensiveRating;
+
   const factors: Prediction['factors'] = [
-    { label: 'ELO Edge',     positive: eloDiff >= 0,                             weight: 0.4,  detail: `${home.eloRating} vs ${away.eloRating} (${eloDiff > 0 ? '+' : ''}${eloDiff})` },
-    { label: 'Home Field',   positive: true,                                      weight: 0.15, detail: 'Home advantage applied' },
-    { label: 'Momentum',     positive: home.momentum >= away.momentum,            weight: 0.2,  detail: `${home.momentum} vs ${away.momentum}` },
-    { label: 'Off/Def Edge', positive: home.offensiveRating - home.defensiveRating >= away.offensiveRating - away.defensiveRating, weight: 0.25, detail: `Net +${(home.offensiveRating - home.defensiveRating).toFixed(1)} vs +${(away.offensiveRating - away.defensiveRating).toFixed(1)}` },
+    { label: 'ELO Edge',     positive: eloDiff >= 0,   weight: 0.4,  detail: `${home.eloRating} vs ${away.eloRating} (${eloDiff > 0 ? '+' : ''}${eloDiff})` },
+    { label: 'Home Field',   positive: true,            weight: 0.15, detail: 'Home advantage applied' },
+    { label: 'Momentum',     positive: home.momentum >= away.momentum, weight: 0.2, detail: `${home.momentum} vs ${away.momentum}` },
+    { label: 'Off/Def Edge', positive: netHome >= netAway, weight: 0.25, detail: `Net ${netHome >= 0 ? '+' : ''}${netHome.toFixed(1)} vs ${netAway >= 0 ? '+' : ''}${netAway.toFixed(1)}` },
   ];
 
   // Build a partial game object for market analyzer (avoids circular construction)
@@ -193,9 +196,13 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
   // Apply market-based confidence adjustment (capped to ±10pp)
   const adjustedConf = Math.min(95, Math.max(20, conf + marketAnalysis.confidenceAdjustment));
 
+  // winProbability is always the WINNER's probability so components that do
+  // `homeWinPct = winnerIsHome ? winProbability : 100 - winProbability` are correct.
+  const winnerProb = prob >= 50 ? prob : 100 - prob;
+
   return {
     winner: winner.name,
-    winProbability: prob,
+    winProbability: winnerProb,
     confidence: adjustedConf,
     predictedScore: { home: predHome, away: predAway },
     expectedMargin: Math.abs(predHome - predAway),

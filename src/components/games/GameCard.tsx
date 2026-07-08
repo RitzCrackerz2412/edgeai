@@ -224,7 +224,7 @@ function TeamSide({
         )}
       </div>
       <span className="text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
-        {name.split(' ').slice(-1)[0]}
+        {abbr}
       </span>
       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{record}</span>
       <span className="text-sm font-bold" style={{ color: isWinner ? color : 'var(--text-secondary)' }}>

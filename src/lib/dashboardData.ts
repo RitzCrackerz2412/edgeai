@@ -13,17 +13,21 @@ export interface ActivityItem {
   timestamp: string;
 }
 
+// ISO timestamps so relative-time labels stay accurate on each render
+const T = (daysAgo: number, hoursAgo = 0) =>
+  new Date(Date.now() - (daysAgo * 86_400_000 + hoursAgo * 3_600_000)).toISOString();
+
 export const ACTIVITY_FEED: ActivityItem[] = [
-  { id: 'a1', type: 'correct',   sport: 'NBA',    title: 'Correct pick',        detail: 'Boston Celtics beat NYK 124-109 · Predicted 88%',      confidence: 88, timestamp: '2h ago'  },
-  { id: 'a2', type: 'correct',   sport: 'NFL',    title: 'Correct pick',        detail: 'KC Chiefs beat CIN 28-21 · Predicted 81%',             confidence: 81, timestamp: '5h ago'  },
-  { id: 'a3', type: 'wrong',     sport: 'MLB',    title: 'Incorrect pick',      detail: 'NYY lost to HOU 3-4 · Predicted Yankees at 61%',        confidence: 61, timestamp: '1d ago'  },
-  { id: 'a4', type: 'upset',     sport: 'NHL',    title: 'Upset alert',         detail: 'Toronto Maple Leafs have 35% upset chance vs COL',      confidence: 35, timestamp: '1d ago'  },
-  { id: 'a5', type: 'correct',   sport: 'Soccer', title: 'Correct pick',        detail: 'Manchester City beat MIL 2-1 · Predicted 77%',         confidence: 77, timestamp: '2d ago'  },
-  { id: 'a6', type: 'high_conf', sport: 'UFC',    title: 'High-confidence pick',detail: 'Jon Jones vs Stipe Miocic — 85% confidence tonight',    confidence: 85, timestamp: '2d ago'  },
-  { id: 'a7', type: 'streak',    sport: 'NBA',    title: 'Win streak',          detail: 'Boston Celtics: 4-game win streak · Momentum +91',      timestamp: '3d ago'  },
-  { id: 'a8', type: 'correct',   sport: 'NHL',    title: 'Correct pick',        detail: 'Colorado Avalanche beat TOR 4-2 · Predicted 76%',      confidence: 76, timestamp: '3d ago'  },
-  { id: 'a9', type: 'model',     sport: 'ALL',    title: 'Model update',        detail: 'Accuracy improved to 71.2% over last 30 days (↑2.8%)', timestamp: '4d ago'  },
-  { id: 'a10',type: 'wrong',     sport: 'Soccer', title: 'Incorrect pick',      detail: 'Arsenal drew vs Brighton 1-1 · Predicted Arsenal 72%', confidence: 72, timestamp: '5d ago'  },
+  { id: 'a1', type: 'correct',   sport: 'NBA',    title: 'Correct pick',        detail: 'Boston Celtics beat NYK 124-109 · Predicted 88%',      confidence: 88, timestamp: T(0, 2)  },
+  { id: 'a2', type: 'correct',   sport: 'NFL',    title: 'Correct pick',        detail: 'KC Chiefs beat CIN 28-21 · Predicted 81%',             confidence: 81, timestamp: T(0, 5)  },
+  { id: 'a3', type: 'wrong',     sport: 'MLB',    title: 'Incorrect pick',      detail: 'NYY lost to HOU 3-4 · Predicted Yankees at 61%',        confidence: 61, timestamp: T(1)     },
+  { id: 'a4', type: 'upset',     sport: 'NHL',    title: 'Upset alert',         detail: 'Toronto Maple Leafs have 35% upset chance vs COL',      confidence: 35, timestamp: T(1)     },
+  { id: 'a5', type: 'correct',   sport: 'Soccer', title: 'Correct pick',        detail: 'Manchester City beat Arsenal 2-1 · Predicted 77%',      confidence: 77, timestamp: T(2)     },
+  { id: 'a6', type: 'high_conf', sport: 'UFC',    title: 'High-confidence pick',detail: 'Jon Jones vs Stipe Miocic — 85% confidence tonight',    confidence: 85, timestamp: T(2)     },
+  { id: 'a7', type: 'streak',    sport: 'NBA',    title: 'Win streak',          detail: 'Boston Celtics: 4-game win streak · Momentum +91',      timestamp: T(3)     },
+  { id: 'a8', type: 'correct',   sport: 'NHL',    title: 'Correct pick',        detail: 'Colorado Avalanche beat TOR 4-2 · Predicted 76%',       confidence: 76, timestamp: T(3)     },
+  { id: 'a9', type: 'model',     sport: 'ALL',    title: 'Model update',        detail: 'Accuracy improved to 71.2% over last 30 days (↑2.8%)',  timestamp: T(4)     },
+  { id: 'a10',type: 'wrong',     sport: 'Soccer', title: 'Incorrect pick',      detail: 'Arsenal drew vs Brighton 1-1 · Predicted Arsenal 72%',  confidence: 72, timestamp: T(5)     },
 ];
 
 export interface TrendingTeam {

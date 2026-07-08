@@ -17,6 +17,15 @@ const SPORT_COLOR: Record<string, string> = {
 function isFinal(s: string) { return s === 'Final' || s === 'Final/OT' || s === 'Final/SO'; }
 function isLive(s: string) { return s === 'Live' || s === 'Halftime' || s === 'Pregame'; }
 
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return 'just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export default async function HomePage() {
   const [games, accuracy] = await Promise.all([getUpcomingGames(), getAccuracyStats()]);
 
@@ -136,7 +145,7 @@ export default async function HomePage() {
                     <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: team.color, display: 'inline-block', flexShrink: 0 }} />
                       <span style={{ fontSize: '0.75rem', fontWeight: leads ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: leads ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                        {team.name.split(' ').slice(-1)[0]}
+                        {team.abbreviation}
                       </span>
                       <span style={{ fontSize: '1.125rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-geist-mono)', color: leads ? team.color : 'var(--text-primary)' }}>
                         {score ?? 0}
@@ -199,7 +208,7 @@ export default async function HomePage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1875rem' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                                    {g.homeTeam.name.split(' ').slice(-1)[0]} vs {g.awayTeam.name.split(' ').slice(-1)[0]}
+                                    {g.homeTeam.abbreviation} vs {g.awayTeam.abbreviation}
                                   </span>
                                   <span style={{ fontSize: '0.625rem', color: SPORT_COLOR[g.sport] ?? 'var(--text-muted)' }}>
                                     {g.league}
@@ -220,7 +229,7 @@ export default async function HomePage() {
                                   {winHome ? g.homeTeam.abbreviation : g.awayTeam.abbreviation}
                                 </span>
                                 <div style={{ width: 56, height: 3, borderRadius: 2, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${winHome ? g.prediction.winProbability : 100 - g.prediction.winProbability}%`, background: winHome ? g.homeTeam.color : g.awayTeam.color, borderRadius: 2 }} />
+                                  <div style={{ height: '100%', width: `${g.prediction.winProbability}%`, background: winHome ? g.homeTeam.color : g.awayTeam.color, borderRadius: 2 }} />
                                 </div>
                               </div>
                             </Link>
@@ -312,7 +321,7 @@ export default async function HomePage() {
                       {item.detail}
                     </p>
                     <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-                      {item.sport} · {item.timestamp}
+                      {item.sport} · {timeAgo(item.timestamp)}
                     </p>
                   </div>
                   {item.confidence && (
