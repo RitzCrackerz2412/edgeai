@@ -202,7 +202,7 @@ export async function getGameById(id: string): Promise<Game | null> {
     if (process.env.ODDS_API_KEY && raw.homeTeamName && raw.awayTeamName) {
       try {
         const provider = getProviders().odds as import('./providers/odds').OddsAPIProvider;
-        const consensusOdds = await provider.findGameOdds(raw.sport, raw.homeTeamName, raw.awayTeamName);
+        const consensusOdds = await provider.findGameOdds(raw.sport, raw.homeTeamName, raw.awayTeamName, raw.league);
         if (consensusOdds) raw.odds = consensusOdds;
       } catch {
         // odds fetch failure is non-fatal
