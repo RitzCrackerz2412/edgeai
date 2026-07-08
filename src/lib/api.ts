@@ -195,7 +195,19 @@ export async function getGameById(id: string): Promise<Game | null> {
 
     // Single summary-endpoint call — no rate limiter, works for any date
     const raw = await fetchEspnGameByEventId(leagueName, eventId);
-    if (raw) return rawGameToGame(raw);
+    if (!raw) return null;
+
+    // Fetch live odds directly if API key is configured
+    if (process.env.ODDS_API_KEY) {
+      try {
+        const consensusOdds = await getProviders().odds.getConsensusOdds(raw.sport, raw.id);
+        if (consensusOdds) raw.odds = consensusOdds;
+      } catch {
+        // odds fetch failure is non-fatal
+      }
+    }
+
+    return rawGameToGame(raw);
   }
   return MOCK_GAMES.find(g => g.id === decodedId) ?? null;
 }
