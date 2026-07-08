@@ -2,32 +2,32 @@
 
 /* ─── Design tokens ─────────────────────────────────────────── */
 :root {
-  /* Surfaces */
-  --bg-base:     #07070e;
-  --bg-surface:  #0b0b16;
-  --bg-card:     #0f0f1e;
-  --bg-elevated: #161626;
-  --bg-hover:    #1c1c2e;
+  /* Surfaces — neutral near-black, no blue tint */
+  --bg-base:     #0D0D0D;
+  --bg-surface:  #111111;
+  --bg-card:     #161616;
+  --bg-elevated: #1C1C1C;
+  --bg-hover:    #222222;
 
-  /* Borders */
-  --border-subtle:  #13131f;
-  --border-default: #1e1e30;
-  --border-strong:  #2a2a40;
-  --border-accent:  rgba(99,102,241,0.35);
+  /* Borders — hairline, low-opacity white */
+  --border-subtle:  rgba(255,255,255,0.04);
+  --border-default: rgba(255,255,255,0.08);
+  --border-strong:  rgba(255,255,255,0.14);
+  --border-accent:  rgba(245,158,11,0.4);
 
   /* Text */
-  --text-primary:   #e8e8f2;
-  --text-secondary: #7e7e9a;
-  --text-muted:     #44445a;
-  --text-disabled:  #2a2a3a;
-  --text-accent:    #818cf8;
+  --text-primary:   #F0F0F0;
+  --text-secondary: #888888;
+  --text-muted:     #444444;
+  --text-disabled:  #2A2A2A;
+  --text-accent:    #F59E0B;
 
-  /* Accent — indigo (reserved for AI elements) */
-  --accent:       #6366f1;
-  --accent-hover: #4f46e5;
-  --accent-light: #818cf8;
-  --accent-dim:   rgba(99,102,241,0.08);
-  --accent-glow:  rgba(99,102,241,0.18);
+  /* Accent — amber only. Used sparingly. */
+  --accent:       #F59E0B;
+  --accent-hover: #D97706;
+  --accent-light: #FBB83F;
+  --accent-dim:   rgba(245,158,11,0.08);
+  --accent-glow:  rgba(245,158,11,0.15);
 
   /* Semantic */
   --success:     #22c55e;
@@ -38,8 +38,8 @@
   --danger-dim:  rgba(239,68,68,0.08);
   --info:        #0ea5e9;
   --info-dim:    rgba(14,165,233,0.08);
-  --purple:      #a855f7;
-  --purple-dim:  rgba(168,85,247,0.08);
+  --purple:      #888888;
+  --purple-dim:  rgba(136,136,136,0.08);
 
   /* Sport accent colors */
   --sport-nfl:     #2563eb;
@@ -47,28 +47,28 @@
   --sport-mlb:     #16a34a;
   --sport-nhl:     #0ea5e9;
   --sport-soccer:  #10b981;
-  --sport-ncaaf:   #7c3aed;
+  --sport-ncaaf:   #e05c1a;
   --sport-ncaab:   #f59e0b;
   --sport-ufc:     #dc2626;
   --sport-boxing:  #b91c1c;
   --sport-f1:      #dc2626;
   --sport-tennis:  #ca8a04;
   --sport-cricket: #059669;
-  --sport-esports: #8b5cf6;
+  --sport-esports: #6366f1;
 
-  /* Shadows */
-  --shadow-sm:   0 1px 3px rgba(0,0,0,0.6);
-  --shadow-md:   0 4px 16px rgba(0,0,0,0.55);
-  --shadow-lg:   0 12px 40px rgba(0,0,0,0.65);
-  --shadow-glow: 0 0 24px rgba(99,102,241,0.15);
+  /* Shadows — reserved for truly floating elements only */
+  --shadow-sm:   0 1px 4px rgba(0,0,0,0.7);
+  --shadow-md:   0 4px 20px rgba(0,0,0,0.6);
+  --shadow-lg:   0 16px 48px rgba(0,0,0,0.7);
+  --shadow-glow: 0 0 20px rgba(245,158,11,0.12);
 
-  /* Radii — sharper for data density */
+  /* Radii */
   --r-xs: 3px;
-  --r-sm: 5px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
-  --r-2xl: 20px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+  --r-2xl: 16px;
 
   /* Layout */
   --sidebar-w:    248px;
@@ -79,16 +79,21 @@
   --background: var(--bg-base);
   --foreground: var(--text-primary);
 
-  /* Card hover bg alias */
+  /* Aliases */
   --bg-card-hover: var(--bg-elevated);
   --border-bright: var(--border-strong);
   --green: var(--success);
+  --border-muted: var(--border-subtle);
+
+  /* Fonts */
+  --font-display: var(--font-barlow-condensed), 'Barlow Condensed', sans-serif;
+  --font-body:    var(--font-barlow), 'Barlow', system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-barlow), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -99,10 +104,10 @@ html, body { height: 100%; margin: 0; padding: 0; }
 body {
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "cv02","cv03","cv04","cv11";
+  font-feature-settings: "tnum";
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────── */
@@ -115,16 +120,20 @@ body {
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ─── Typography scale ──────────────────────────────────────── */
-.text-display { font-size: clamp(1.5rem, 3.5vw, 2.25rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; }
-.text-h1      { font-size: 1.5rem;   font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; }
-.text-h2      { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1.3; }
+/* Display: Barlow Condensed for big numbers, scores, headlines */
+.text-display { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.01em; line-height: 1; }
+.text-h1      { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; letter-spacing: 0; line-height: 1.1; }
+.text-h2      { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; letter-spacing: 0; line-height: 1.2; }
 .text-h3      { font-size: 0.9375rem; font-weight: 600; line-height: 1.4; }
 .text-h4      { font-size: 0.8125rem; font-weight: 600; line-height: 1.4; }
-.text-label   { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); }
-.text-label-sm { font-size: 0.5625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
-.text-mono    { font-family: var(--font-geist-mono), 'Fira Code', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-.text-mono-sm { font-family: var(--font-geist-mono), 'Fira Code', ui-monospace, monospace; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
-.text-score   { font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.04em; }
+/* Labels: all-caps, wide tracking, muted — the workhorse label style */
+.text-label    { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+.text-label-sm { font-size: 0.5rem;   font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); }
+/* Numbers/scores: Barlow Condensed for maximum size contrast */
+.text-number  { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-weight: 700; }
+.text-mono    { font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.text-mono-sm { font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.text-score   { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: -0.01em; }
 
 /* ─── Surface classes ───────────────────────────────────────── */
 .card         { background: var(--bg-card);     border: 1px solid var(--border-default); border-radius: var(--r-lg); }
@@ -470,10 +479,10 @@ body {
 }
 
 /* ─── Prediction outcome badges ─────────────────────────────── */
-.badge-correct   { background: rgba(16,185,129,0.1);  color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
-.badge-incorrect { background: rgba(239,68,68,0.08);  color: #ef4444; border: 1px solid rgba(239,68,68,0.15); }
-.badge-pending   { background: rgba(99,102,241,0.08); color: #818cf8; border: 1px solid rgba(99,102,241,0.15); }
-.badge-live      { background: rgba(239,68,68,0.1);   color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+.badge-correct   { background: rgba(34,197,94,0.08);   color: #22c55e; border: 1px solid rgba(34,197,94,0.18); }
+.badge-incorrect { background: rgba(239,68,68,0.08);   color: #ef4444; border: 1px solid rgba(239,68,68,0.15); }
+.badge-pending   { background: rgba(245,158,11,0.08);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.18); }
+.badge-live      { background: rgba(239,68,68,0.1);    color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
 
 /* ─── Button styles ─────────────────────────────────────────── */
 .btn-accent {
@@ -512,13 +521,30 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.5625rem;
+  font-size: 0.5rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent-light);
-  background: var(--accent-dim);
-  border: 1px solid rgba(99,102,241,0.15);
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-default);
   padding: 0.125rem 0.4375rem;
   border-radius: var(--r-xs);
+}
+
+/* ─── Featured pick card — the ONE element that gets elevation ── */
+.featured-pick {
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-glow);
+  position: relative;
+  overflow: hidden;
+}
+.featured-pick::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
 }
