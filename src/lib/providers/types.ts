@@ -132,6 +132,7 @@ export interface OddsProvider {
   readonly name: string;
   getOdds(sport: Sport, gameId: string): Promise<RawOdds[]>;
   getConsensusOdds(sport: Sport, gameId: string): Promise<RawOdds | null>;
+  findGameOdds(sport: Sport, homeTeam: string, awayTeam: string): Promise<RawOdds | null>;
 }
 
 export interface WeatherProvider {

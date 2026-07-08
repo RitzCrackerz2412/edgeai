@@ -197,10 +197,12 @@ export async function getGameById(id: string): Promise<Game | null> {
     const raw = await fetchEspnGameByEventId(leagueName, eventId);
     if (!raw) return null;
 
-    // Fetch live odds directly if API key is configured
-    if (process.env.ODDS_API_KEY) {
+    // Fetch live odds directly if API key is configured — match by team names
+    // because the Odds API uses its own game IDs, not ESPN event IDs
+    if (process.env.ODDS_API_KEY && raw.homeTeamName && raw.awayTeamName) {
       try {
-        const consensusOdds = await getProviders().odds.getConsensusOdds(raw.sport, raw.id);
+        const provider = getProviders().odds as import('./providers/odds').OddsAPIProvider;
+        const consensusOdds = await provider.findGameOdds(raw.sport, raw.homeTeamName, raw.awayTeamName);
         if (consensusOdds) raw.odds = consensusOdds;
       } catch {
         // odds fetch failure is non-fatal
