@@ -122,6 +122,50 @@ const ESPN_SPORT_MAP: Record<string, Sport> = {
   football: 'NFL', basketball: 'NBA', baseball: 'MLB', hockey: 'NHL', soccer: 'Soccer',
 };
 
+// Sports played exclusively indoors — skip weather fetch for these
+const INDOOR_SPORTS = new Set<Sport>(['NBA', 'NHL']);
+
+const WMO_CONDITION: Record<number, string> = {
+  0: 'Clear', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Icy Fog',
+  51: 'Light Drizzle', 53: 'Drizzle', 55: 'Heavy Drizzle',
+  61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+  71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow',
+  80: 'Showers', 81: 'Heavy Showers', 82: 'Violent Showers',
+  95: 'Thunderstorm', 96: 'Thunderstorm + Hail', 99: 'Heavy Thunderstorm',
+};
+
+type WeatherResult = { temp: number; condition: string; wind: number; humidity: number };
+
+async function fetchWeatherForCity(city: string): Promise<WeatherResult | null> {
+  try {
+    // Extract the primary city name (before any comma)
+    const cityName = city.split(',')[0].trim();
+    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
+    const geoRes = await fetch(geoUrl, { next: { revalidate: 86400 } });
+    if (!geoRes.ok) return null;
+    const geoData = await geoRes.json();
+    const loc = geoData.results?.[0];
+    if (!loc?.latitude) return null;
+
+    const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`;
+    const wRes = await fetch(wUrl, { next: { revalidate: 1800 } });
+    if (!wRes.ok) return null;
+    const wData = await wRes.json();
+    const curr = wData.current;
+    if (curr?.temperature_2m === undefined) return null;
+
+    return {
+      temp: Math.round(curr.temperature_2m),
+      humidity: Math.round(curr.relative_humidity_2m ?? 0),
+      wind: Math.round(curr.wind_speed_10m ?? 0),
+      condition: WMO_CONDITION[curr.weather_code as number] ?? 'Unknown',
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Fetch a single game by ESPN event ID via the summary endpoint.
 // One HTTP call, no in-process rate limiter, works for any date.
 async function fetchEspnGameByEventId(leagueName: string, eventId: string): Promise<RawGame | null> {
@@ -231,7 +275,20 @@ export async function getGameById(id: string): Promise<Game | null> {
       }
     }
 
-    return rawGameToGame(raw);
+    const game = rawGameToGame(raw);
+    if (!game) return null;
+
+    // Fetch live weather for outdoor sports when we have a venue city
+    if (!INDOOR_SPORTS.has(raw.sport) && raw.venueCity) {
+      try {
+        const weather = await fetchWeatherForCity(raw.venueCity);
+        if (weather) game.weather = weather;
+      } catch {
+        // weather fetch failure is non-fatal
+      }
+    }
+
+    return game;
   }
   return MOCK_GAMES.find(g => g.id === decodedId) ?? null;
 }

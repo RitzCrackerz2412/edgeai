@@ -47,7 +47,11 @@ export function GameContextCard({ game }: { game: Game }) {
       ) : (
         <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--bg-elevated)' }}>
           <Cloud size={14} style={{ color: 'var(--text-muted)' }} />
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Indoor venue — weather N/A</span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {game.homeTeam.sport === 'NBA' || game.homeTeam.sport === 'NHL'
+              ? 'Indoor venue — weather N/A'
+              : 'Weather data unavailable'}
+          </span>
         </div>
       )}
 
