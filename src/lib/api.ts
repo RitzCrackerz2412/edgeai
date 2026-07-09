@@ -162,16 +162,17 @@ async function fetchEspnGameByEventId(leagueName: string, eventId: string): Prom
     // Parse stat leaders (available for live/completed games)
     const rawLeaders: RawPlayerLeader[] = [];
     if (Array.isArray(data.leaders)) {
-      for (const teamBlock of data.leaders as { team?: { displayName?: string }; leaders?: { displayName?: string; leaders?: { displayName?: string; value?: number }[] }[] }[]) {
+      for (const teamBlock of data.leaders as { team?: { displayName?: string }; leaders?: { displayName?: string; leaders?: { displayValue?: string; athlete?: { displayName?: string } }[] }[] }[]) {
         const teamName = teamBlock.team?.displayName ?? '';
         for (const cat of teamBlock.leaders ?? []) {
-          const topPlayer = cat.leaders?.[0];
-          if (topPlayer?.displayName) {
+          const topEntry = cat.leaders?.[0];
+          const playerName = topEntry?.athlete?.displayName;
+          if (playerName) {
             rawLeaders.push({
               teamName,
-              playerName: topPlayer.displayName,
+              playerName,
               category: cat.displayName ?? '',
-              value: topPlayer.value ?? 0,
+              value: parseFloat(topEntry?.displayValue ?? '0'),
             });
           }
         }
