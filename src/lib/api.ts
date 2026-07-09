@@ -212,11 +212,12 @@ async function fetchEspnGameByEventId(leagueName: string, eventId: string): Prom
           const topEntry = cat.leaders?.[0];
           const playerName = topEntry?.athlete?.displayName;
           if (playerName) {
+            const parsed = parseFloat(topEntry?.displayValue ?? '');
             rawLeaders.push({
               teamName,
               playerName,
               category: cat.displayName ?? '',
-              value: parseFloat(topEntry?.displayValue ?? '0'),
+              value: isNaN(parsed) ? 0 : parsed,
             });
           }
         }
@@ -282,7 +283,70 @@ export async function getGameById(id: string): Promise<Game | null> {
     if (!INDOOR_SPORTS.has(raw.sport) && raw.venueCity) {
       try {
         const weather = await fetchWeatherForCity(raw.venueCity);
-        if (weather) game.weather = weather;
+        if (weather) {
+          game.weather = weather;
+
+          // Integrate weather into prediction factors + confidence
+          const { wind, condition, temp } = weather;
+          const condLower = condition.toLowerCase();
+          const weatherFactors: Game['prediction']['factors'] = [];
+
+          if (wind > 20) {
+            weatherFactors.push({
+              label: 'High Wind',
+              positive: false,
+              weight: 0.08,
+              detail: `${wind} mph — limits aerial play and range`,
+            });
+            game.prediction.confidence = Math.max(20, game.prediction.confidence - 3);
+          }
+
+          if (condLower.includes('rain') || condLower.includes('shower') || condLower.includes('drizzle')) {
+            weatherFactors.push({
+              label: 'Rain Conditions',
+              positive: false,
+              weight: 0.06,
+              detail: `${condition} slows pace, reduces scoring`,
+            });
+            game.prediction.confidence = Math.max(20, game.prediction.confidence - 2);
+          } else if (condLower.includes('snow') || condLower.includes('blizzard')) {
+            weatherFactors.push({
+              label: 'Snow Conditions',
+              positive: false,
+              weight: 0.1,
+              detail: `${condition} significantly affects footing and accuracy`,
+            });
+            game.prediction.confidence = Math.max(20, game.prediction.confidence - 5);
+          } else if (condLower.includes('thunder')) {
+            weatherFactors.push({
+              label: 'Storm Risk',
+              positive: false,
+              weight: 0.07,
+              detail: `${condition} — possible delay risk`,
+            });
+          }
+
+          if (temp <= 20) {
+            weatherFactors.push({
+              label: 'Extreme Cold',
+              positive: false,
+              weight: 0.05,
+              detail: `${temp}°F — cold affects stamina and ball handling`,
+            });
+            game.prediction.confidence = Math.max(20, game.prediction.confidence - 2);
+          } else if (temp >= 95) {
+            weatherFactors.push({
+              label: 'Extreme Heat',
+              positive: false,
+              weight: 0.05,
+              detail: `${temp}°F — heat fatigue disadvantages away team`,
+            });
+          }
+
+          if (weatherFactors.length > 0) {
+            game.prediction.factors = [...game.prediction.factors, ...weatherFactors];
+          }
+        }
       } catch {
         // weather fetch failure is non-fatal
       }

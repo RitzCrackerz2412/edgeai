@@ -213,6 +213,24 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
     { label: 'Off/Def Edge', positive: netHome >= netAway, weight: 0.25, detail: `Net ${netHome >= 0 ? '+' : ''}${netHome.toFixed(1)} vs ${netAway >= 0 ? '+' : ''}${netAway.toFixed(1)}` },
   ];
 
+  // Key Player Edge — when real match leaders are available (live/completed games)
+  // ESPN returns home team first, so leaders[0].teamName = home team
+  if (leaders && leaders.length >= 2) {
+    const homeTeamKey = leaders[0].teamName;
+    const homeLeaders = leaders.filter(l => l.teamName === homeTeamKey);
+    const awayLeaders = leaders.filter(l => l.teamName !== homeTeamKey);
+    if (homeLeaders.length > 0 && awayLeaders.length > 0) {
+      const homeTop = homeLeaders.reduce((a, b) => b.value > a.value ? b : a);
+      const awayTop = awayLeaders.reduce((a, b) => b.value > a.value ? b : a);
+      factors.push({
+        label: 'Key Player Edge',
+        positive: homeTop.value >= awayTop.value,
+        weight: 0.1,
+        detail: `${homeTop.playerName} vs ${awayTop.playerName} · ${homeTop.category}`,
+      });
+    }
+  }
+
   // Build a partial game object for market analyzer (avoids circular construction)
   const partialGame = {
     homeTeam: rawHome, awayTeam: rawAway,
