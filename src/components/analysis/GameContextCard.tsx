@@ -1,42 +1,31 @@
 import type { Game } from '@/lib/types';
-import { Cloud, Wind, Thermometer, MapPin, Clock, Plane } from 'lucide-react';
-
-interface ContextRow {
-  label: string;
-  homeValue: string;
-  awayValue: string;
-  icon: React.ReactNode;
-}
+import { Cloud, Wind, Thermometer, MapPin, Clock, Plane, Shield } from 'lucide-react';
 
 export function GameContextCard({ game }: { game: Game }) {
-  const rows: ContextRow[] = [
-    {
-      label: 'Rest Days',
-      homeValue: `${getMockRestDays(game.homeTeam.sport, 'home')} days`,
-      awayValue: `${getMockRestDays(game.homeTeam.sport, 'away')} days`,
-      icon: <Clock size={12} />,
-    },
-    {
-      label: 'Travel Distance',
-      homeValue: 'Home (0 mi)',
-      awayValue: `${getMockTravel(game.awayTeam.abbreviation)} mi`,
-      icon: <Plane size={12} />,
-    },
-  ];
+  const location = [game.venueCity, game.venueState ?? game.venueCountry]
+    .filter(Boolean)
+    .join(', ');
+
+  const homeAdv = getHomeAdvantage(game.homeTeam.sport);
+  const contextRows = getContextRows(game);
 
   return (
     <div className="space-y-4">
       {/* Venue */}
       <div className="flex items-start gap-2.5">
-        <MapPin size={14} style={{ color: 'var(--accent-light)', marginTop: '2px', flexShrink: 0 }} />
+        <MapPin size={14} style={{ color: 'var(--accent)', marginTop: '2px', flexShrink: 0 }} />
         <div>
-          <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{game.venue.split(',')[0]}</div>
-          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{game.venue}</div>
+          <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {game.venue.split(',')[0]}
+          </div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {location || game.venue}
+          </div>
         </div>
       </div>
 
       {/* Weather (if applicable) */}
-      {game.weather && (
+      {game.weather ? (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl p-3" style={{ background: 'var(--bg-elevated)' }}>
             <div className="flex items-center gap-1.5 mb-1.5">
@@ -55,16 +44,14 @@ export function GameContextCard({ game }: { game: Game }) {
             <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Humidity {game.weather.humidity}%</div>
           </div>
         </div>
-      )}
-
-      {!game.weather && (
+      ) : (
         <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--bg-elevated)' }}>
           <Cloud size={14} style={{ color: 'var(--text-muted)' }} />
           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Indoor venue — weather N/A</span>
         </div>
       )}
 
-      {/* Rest + Travel */}
+      {/* Context factors */}
       <div>
         <table className="w-full text-sm">
           <thead>
@@ -75,38 +62,86 @@ export function GameContextCard({ game }: { game: Game }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {contextRows.map((r, i) => (
               <tr key={i} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                <td className="py-2 text-xs flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{r.icon}</span>
-                  {r.label}
+                <td className="py-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="flex items-center gap-1.5">
+                    <span style={{ color: 'var(--text-muted)' }}>{r.icon}</span>
+                    {r.label}
+                  </span>
                 </td>
-                <td className="py-2 text-center text-xs text-mono" style={{ color: 'var(--text-primary)' }}>{r.homeValue}</td>
-                <td className="py-2 text-center text-xs text-mono" style={{ color: 'var(--text-primary)' }}>{r.awayValue}</td>
+                <td className="py-2 text-center text-xs text-mono" style={{ color: r.homeEdge ? 'var(--success)' : 'var(--text-primary)' }}>{r.homeValue}</td>
+                <td className="py-2 text-center text-xs text-mono" style={{ color: r.awayEdge ? 'var(--success)' : 'var(--text-primary)' }}>{r.awayValue}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
+      {/* Home advantage note */}
+      <div className="rounded-xl p-3 flex items-start gap-2.5" style={{ background: 'var(--bg-elevated)' }}>
+        <Shield size={13} style={{ color: 'var(--accent)', marginTop: '1px', flexShrink: 0 }} />
+        <div>
+          <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Home Advantage</div>
+          <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{homeAdv}</div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function getMockRestDays(sport: string, side: 'home' | 'away'): number {
-  // Live: derive from schedule API (SportsDataIO) game log
-  if (sport === 'NBA') return side === 'home' ? 1 : 2;
-  if (sport === 'NFL') return 7;
-  if (sport === 'NHL') return side === 'away' ? 1 : 3;
-  if (sport === 'MLB') return 0;
-  return 3;
+interface ContextRow {
+  label: string;
+  homeValue: string;
+  awayValue: string;
+  icon: React.ReactNode;
+  homeEdge?: boolean;
+  awayEdge?: boolean;
 }
 
-function getMockTravel(abbr: string): number {
-  // Live: replace with city-to-city distance from venue coordinates
-  const distances: Record<string, number> = {
-    BUF: 1134, LAL: 1590, HOU: 1357, TOR: 1862,
-    ARS: 5258, SM: 0, BOS: 1842, DEN: 1862,
-  };
-  return distances[abbr] ?? 1200;
+function getContextRows(game: Game): ContextRow[] {
+  const sport = game.homeTeam.sport;
+  const homeElo = game.homeTeam.eloRating;
+  const awayElo = game.awayTeam.eloRating;
+  const eloDiff = homeElo - awayElo;
+
+  const rows: ContextRow[] = [
+    {
+      label: 'ELO Rating',
+      homeValue: String(homeElo),
+      awayValue: String(awayElo),
+      icon: <Shield size={11} />,
+      homeEdge: eloDiff > 0,
+      awayEdge: eloDiff < 0,
+    },
+    {
+      label: 'Location',
+      homeValue: 'Home',
+      awayValue: 'Away',
+      icon: <Plane size={11} />,
+      homeEdge: true,
+    },
+  ];
+
+  if (sport === 'NFL' || sport === 'NBA' || sport === 'NHL') {
+    rows.push({
+      label: 'Win %',
+      homeValue: `${Math.round(game.homeTeam.winPct * 100)}%`,
+      awayValue: `${Math.round(game.awayTeam.winPct * 100)}%`,
+      icon: <Clock size={11} />,
+      homeEdge: game.homeTeam.winPct > game.awayTeam.winPct,
+      awayEdge: game.awayTeam.winPct > game.homeTeam.winPct,
+    });
+  }
+
+  return rows;
+}
+
+function getHomeAdvantage(sport: string): string {
+  if (sport === 'NFL') return '+2.5 pts avg. home-field boost applied to projection';
+  if (sport === 'NBA') return '+3.3 pts avg. crowd noise + familiarity edge';
+  if (sport === 'MLB') return '+0.18 runs avg. home park factor';
+  if (sport === 'NHL') return '+0.15 goals avg. last-change line matching';
+  if (sport === 'Soccer') return '+0.22 goals avg. crowd pressure + no travel fatigue';
+  return 'Home court/field advantage factored into prediction';
 }

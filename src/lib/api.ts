@@ -16,6 +16,7 @@
  */
 
 import { Game, Sport, AccuracyStats, PredictionRecord, LeagueData, Tournament, type Team } from './types';
+import type { RawPlayerLeader } from './providers/types';
 import { MOCK_GAMES, ACCURACY_STATS, PREDICTION_HISTORY } from './mockData';
 import { TEAM_DETAILS, type TeamDetail } from './teamData';
 import { PLAYER_DETAILS, PLAYER_LIST, type PlayerDetail } from './playerData';
@@ -158,6 +159,25 @@ async function fetchEspnGameByEventId(leagueName: string, eventId: string): Prom
       }
     };
 
+    // Parse stat leaders (available for live/completed games)
+    const rawLeaders: RawPlayerLeader[] = [];
+    if (Array.isArray(data.leaders)) {
+      for (const teamBlock of data.leaders as { team?: { displayName?: string }; leaders?: { displayName?: string; leaders?: { displayName?: string; value?: number }[] }[] }[]) {
+        const teamName = teamBlock.team?.displayName ?? '';
+        for (const cat of teamBlock.leaders ?? []) {
+          const topPlayer = cat.leaders?.[0];
+          if (topPlayer?.displayName) {
+            rawLeaders.push({
+              teamName,
+              playerName: topPlayer.displayName,
+              category: cat.displayName ?? '',
+              value: topPlayer.value ?? 0,
+            });
+          }
+        }
+      }
+    }
+
     return {
       id: `${leagueName}-${eventId}`,
       sport,
@@ -177,6 +197,7 @@ async function fetchEspnGameByEventId(leagueName: string, eventId: string): Prom
       clock: comp.status?.displayClock || undefined,
       homeScore: home.score !== undefined && home.score !== '' ? parseInt(home.score, 10) : undefined,
       awayScore: away.score !== undefined && away.score !== '' ? parseInt(away.score, 10) : undefined,
+      leaders: rawLeaders.length > 0 ? rawLeaders : undefined,
     };
   } catch {
     return null;

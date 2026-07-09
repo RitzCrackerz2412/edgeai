@@ -81,6 +81,9 @@ export interface Game {
   /** Raw ISO 8601 timestamp from the provider */
   scheduledAt?: string;
   venue: string;
+  venueCity?: string;
+  venueState?: string;
+  venueCountry?: string;
   status: 'Upcoming' | 'Pregame' | 'Live' | 'Halftime' | 'Final' | 'Final/OT' | 'Final/SO' | 'Postponed' | 'Cancelled';
   /** Current game clock, e.g. "2:45" */
   clock?: string;

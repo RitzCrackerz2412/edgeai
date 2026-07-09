@@ -5,7 +5,7 @@
  */
 
 import type { Game, Sport, Team, Prediction } from '../types';
-import type { RawGame, RawOdds } from '../providers/types';
+import type { RawGame, RawOdds, RawPlayerLeader } from '../providers/types';
 import { ALL_TEAMS } from './teams/index';
 import { resultsStore } from '../results/store';
 import { enrichTeam } from '../results/enrichTeam';
@@ -138,7 +138,33 @@ function predictScores(home: Team, away: Team): { home: number; away: number } {
 
 // ── ELO prediction ────────────────────────────────────────────────────────────
 
-function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayScore?: number, status?: Game['status'], rawOdds?: RawOdds | null): Prediction {
+function pickKeyPlayers(leaders: RawPlayerLeader[] | undefined, home: Team, away: Team, eloDiff: number, sport: Sport): Pick<Prediction, 'playerOfMatch' | 'highestImpactPlayer' | 'lowestConfidenceVar'> {
+  if (leaders && leaders.length > 0) {
+    const sorted = [...leaders].sort((a, b) => b.value - a.value);
+    const top = sorted[0];
+    const second = sorted.find(l => l.teamName !== top.teamName) ?? sorted[1];
+    const playerOfMatch = top ? `${top.playerName} · ${top.category}` : '';
+    const highestImpactPlayer = second ? `${second.playerName} · ${second.category}` : '';
+    // Uncertainty: the stat category where both teams have a leader (contested)
+    const categories = new Set(leaders.map(l => l.category));
+    const contested = [...categories].find(cat => leaders.filter(l => l.category === cat).length > 1);
+    const lowestConfidenceVar = contested ? `${contested} battle` : sport === 'Soccer' ? 'Set piece threat' : 'Late-game variance';
+    return { playerOfMatch, highestImpactPlayer, lowestConfidenceVar };
+  }
+  // No live leaders yet — derive uncertainty note from prediction factors
+  const absElo = Math.abs(eloDiff);
+  let lowestConfidenceVar = '';
+  if (absElo < 50) lowestConfidenceVar = 'Near-even ELO matchup';
+  else if (sport === 'Soccer') lowestConfidenceVar = 'Set piece + goalkeeper form';
+  else if (sport === 'NFL') lowestConfidenceVar = 'Turnover variance';
+  else if (sport === 'NBA') lowestConfidenceVar = 'Pace-of-play mismatch';
+  else if (sport === 'MLB') lowestConfidenceVar = 'Starting pitcher rest';
+  else if (sport === 'NHL') lowestConfidenceVar = 'Goaltender hot streak';
+  else lowestConfidenceVar = 'Home court advantage variance';
+  return { playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar };
+}
+
+function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayScore?: number, status?: Game['status'], rawOdds?: RawOdds | null, leaders?: RawPlayerLeader[]): Prediction {
   // Use live-enriched ratings for win probability when available
   const home = enrichTeam(rawHome);
   const away = enrichTeam(rawAway);
@@ -155,6 +181,9 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
     [predHome, predAway] = [predAway, predHome];
   }
 
+  const eloDiff = home.eloRating - away.eloRating;
+  const keyPlayers = pickKeyPlayers(leaders, home, away, eloDiff, home.sport);
+
   if (isFinal && homeScore !== undefined && awayScore !== undefined) {
     const winner = homeScore > awayScore ? home : away;
     return {
@@ -164,7 +193,7 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
       predictedScore: { home: predHome, away: predAway },
       expectedMargin: Math.abs(homeScore - awayScore),
       upsetProbability: Math.min(prob, 100 - prob),
-      playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar: '',
+      ...keyPlayers,
       factors: [],
       gameFlow: `Final: ${away.abbreviation} ${awayScore} @ ${home.abbreviation} ${homeScore}`,
       monteCarloWinRate: prob,
@@ -172,7 +201,6 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
     };
   }
 
-  const eloDiff = home.eloRating - away.eloRating;
   const winner  = prob >= 50 ? home : away;
 
   const netHome = home.offensiveRating - home.defensiveRating;
@@ -207,7 +235,7 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
     predictedScore: { home: predHome, away: predAway },
     expectedMargin: Math.abs(predHome - predAway),
     upsetProbability: Math.min(prob, 100 - prob),
-    playerOfMatch: '', highestImpactPlayer: '', lowestConfidenceVar: '',
+    ...keyPlayers,
     factors,
     gameFlow: 'AI pre-game projection',
     monteCarloWinRate: prob,
@@ -285,7 +313,7 @@ export function rawGameToGame(raw: RawGame): Game | null {
     }
   }
 
-  const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status, raw.odds ?? null);
+  const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status, raw.odds ?? null, raw.leaders);
 
   return {
     id: `espn-${raw.id}`,
@@ -297,6 +325,9 @@ export function rawGameToGame(raw: RawGame): Game | null {
     time: timeStr,
     scheduledAt: raw.scheduledAt,
     venue: raw.venue,
+    venueCity: raw.venueCity || undefined,
+    venueState: raw.venueState || undefined,
+    venueCountry: raw.venueCountry || undefined,
     status,
     period: raw.period,
     clock: raw.clock,

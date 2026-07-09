@@ -23,6 +23,15 @@ export interface RawGame {
   awayScore?: number;
   /** Consensus odds attached by an odds provider, if available */
   odds?: RawOdds;
+  /** Top stat performers per team, extracted from ESPN summary leaders */
+  leaders?: RawPlayerLeader[];
+}
+
+export interface RawPlayerLeader {
+  teamName: string;
+  playerName: string;
+  category: string;
+  value: number;
 }
 
 export interface RawTeamStats {
