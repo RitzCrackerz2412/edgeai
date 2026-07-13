@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, Trash2, BarChart2 } from 'lucide-react';
 import { FinanceSearchBar } from '@/components/finance/FinanceSearchBar';
@@ -34,21 +34,33 @@ function usePortfolio() {
     setHoldings(JSON.parse(localStorage.getItem('edgeai-portfolio') ?? 'null') ?? SAMPLE);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('edgeai-portfolio', JSON.stringify(holdings));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear/set on data changes
-    if (holdings.length === 0) { setEnriched([]); return; }
+  const enrichHoldings = useCallback((current: Holding[]) => {
+    if (current.length === 0) { setEnriched([]); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetch pattern
     setLoading(true);
     Promise.all(
-      holdings.map(h =>
+      current.map(h =>
         fetch(`/api/finance/quote/${h.ticker}`)
           .then(r => r.json())
           .then(d => ({ ...h, price: d.quote?.price ?? h.cost, changePct: d.quote?.changePct ?? 0 }))
           .catch(() => h),
       ),
     ).then(results => { setEnriched(results); setLoading(false); });
-  }, [holdings]);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('edgeai-portfolio', JSON.stringify(holdings));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear/set on data changes
+    if (holdings.length === 0) { setEnriched([]); return; }
+    enrichHoldings(holdings);
+  }, [holdings, enrichHoldings]);
+
+  // Auto-refresh prices every 60s
+  useEffect(() => {
+    if (holdings.length === 0) return;
+    const id = setInterval(() => enrichHoldings(holdings), 60_000);
+    return () => clearInterval(id);
+  }, [holdings, enrichHoldings]);
 
   const add = (ticker: string, name: string, shares: number, cost: number) => {
     setHoldings(prev => [...prev.filter(h => h.ticker !== ticker), { ticker, name, shares, cost }]);

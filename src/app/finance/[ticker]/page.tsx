@@ -15,7 +15,8 @@ import { InsiderActivityPanel } from '@/components/finance/InsiderActivityPanel'
 import { EarningsChart } from '@/components/finance/EarningsChart';
 import { NewsCard } from '@/components/finance/NewsCard';
 import { FinanceSearchBar } from '@/components/finance/FinanceSearchBar';
-import { TrendingUp, TrendingDown, Building2, Globe, Users } from 'lucide-react';
+import { LivePriceHeader } from '@/components/finance/LivePriceHeader';
+import { Building2, Globe, Users } from 'lucide-react';
 
 export const revalidate = 120;
 
@@ -119,7 +120,6 @@ export default async function StockPage({ params }: Props) {
     analyst, insider, history,
   });
 
-  const pos    = quote.changePct >= 0;
   const mktCap = formatBig(quote.marketCap);
 
   return (
@@ -152,35 +152,18 @@ export default async function StockPage({ params }: Props) {
               </div>
             </div>
 
-            <div className="flex items-end gap-3 mt-2">
-              <span className="text-4xl font-black font-mono" style={{ color: 'var(--text-primary)' }}>
-                ${quote.price.toFixed(2)}
-              </span>
-              <div className="flex items-center gap-1.5 mb-1">
-                {pos ? <TrendingUp size={14} style={{ color: 'var(--success)' }} /> : <TrendingDown size={14} style={{ color: 'var(--danger)' }} />}
-                <span className="text-base font-semibold font-mono" style={{ color: pos ? 'var(--success)' : 'var(--danger)' }}>
-                  {pos ? '+' : ''}{quote.change.toFixed(2)} ({pos ? '+' : ''}{quote.changePct.toFixed(2)}%)
-                </span>
-              </div>
-            </div>
-
-            {/* Pre/post market */}
-            {quote.preMarketPrice && (
-              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Pre-market: ${quote.preMarketPrice.toFixed(2)}{' '}
-                <span style={{ color: (quote.preMarketChange ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {(quote.preMarketChange ?? 0) >= 0 ? '+' : ''}{quote.preMarketChange?.toFixed(2)}%
-                </span>
-              </div>
-            )}
-            {quote.postMarketPrice && (
-              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                After-hours: ${quote.postMarketPrice.toFixed(2)}{' '}
-                <span style={{ color: (quote.postMarketChange ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                  {(quote.postMarketChange ?? 0) >= 0 ? '+' : ''}{quote.postMarketChange?.toFixed(2)}%
-                </span>
-              </div>
-            )}
+            {/* Live-updating price — polls every 30s */}
+            <LivePriceHeader
+              ticker={sym}
+              initialPrice={quote.price}
+              initialChange={quote.change}
+              initialChangePct={quote.changePct}
+              initialMarketState={quote.marketState}
+              initialPreMarketPrice={quote.preMarketPrice}
+              initialPreMarketChange={quote.preMarketChange}
+              initialPostMarketPrice={quote.postMarketPrice}
+              initialPostMarketChange={quote.postMarketChange}
+            />
           </div>
 
           {/* Right: key stats */}
@@ -202,16 +185,8 @@ export default async function StockPage({ params }: Props) {
         </div>
 
         {/* Market state badge */}
-        <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-          <div
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ background: quote.marketState === 'REGULAR' ? 'var(--success)' : 'var(--warning)' }}
-          />
-          <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
-            {quote.marketState === 'REGULAR' ? 'Market Open' : quote.marketState === 'PRE' ? 'Pre-Market' : quote.marketState === 'POST' ? 'After Hours' : 'Market Closed'}
-            {' · '}Updated {new Date(quote.updatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-          </span>
-          {profile?.website && (
+        {profile?.website && (
+          <div className="flex items-center mt-4 pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <a
               href={profile.website}
               target="_blank"
@@ -222,8 +197,8 @@ export default async function StockPage({ params }: Props) {
               <Globe size={10} />
               {profile.website.replace(/^https?:\/\//, '')}
             </a>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Main layout: left (chart + details) / right (research card) */}
@@ -234,7 +209,7 @@ export default async function StockPage({ params }: Props) {
 
           {/* Price Chart */}
           <Section title="Price History">
-            <PriceChart ticker={sym} currentPrice={quote.price} positive={pos} />
+            <PriceChart ticker={sym} currentPrice={quote.price} positive={quote.changePct >= 0} />
           </Section>
 
           {/* Executive Summary */}
