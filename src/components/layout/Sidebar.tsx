@@ -7,6 +7,7 @@ import {
   Settings, ChevronLeft, ChevronRight, X, Zap, History,
   Activity, BrainCircuit, GitCompare, Trophy,
   Globe, Swords, CalendarDays, SlidersHorizontal,
+  TrendingUp, Scan, Newspaper, PieChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +41,14 @@ const SPORTS_NAV = [
   { href: '/f1',      label: 'Formula 1', color: '#dc2626' },
   { href: '/cricket', label: 'Cricket',   color: '#059669' },
   { href: '/esports', label: 'Esports',   color: '#8b5cf6' },
+];
+
+const FINANCE_NAV = [
+  { href: '/finance',           label: 'Dashboard', Icon: TrendingUp },
+  { href: '/finance/markets',   label: 'Markets',   Icon: Activity },
+  { href: '/finance/scanner',   label: 'Scanner',   Icon: Scan },
+  { href: '/finance/portfolio', label: 'Portfolio', Icon: PieChart },
+  { href: '/finance/news',      label: 'News',      Icon: Newspaper },
 ];
 
 const ADMIN_NAV = [
@@ -104,7 +113,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
                 EdgeAI
               </p>
               <p style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.1875rem', letterSpacing: '0.04em' }}>
-                Sports Intelligence
+                Decision Intelligence
               </p>
             </div>
           )}
@@ -139,6 +148,38 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
             {ANALYSIS_NAV.map(item => (
               <NavItem key={item.href} {...item} isActive={active(item.href)} collapsed={collapsed} onClick={onClose} />
             ))}
+          </div>
+
+          {/* Finance */}
+          {!collapsed && (
+            <p style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#10b981', padding: '0.625rem 0.625rem 0.25rem' }}>
+              Finance
+            </p>
+          )}
+          {collapsed && <div style={{ margin: '0.375rem 0', height: 1, background: 'var(--border-subtle)' }} />}
+          <div style={{ marginBottom: '0.25rem' }}>
+            {FINANCE_NAV.map(item => {
+              const isAct = active(item.href, item.href === '/finance');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  title={collapsed ? item.label : undefined}
+                  className={cn('flex items-center gap-2 rounded-md transition-all duration-150', collapsed ? 'h-8 w-8 justify-center mx-auto' : 'h-8 px-2')}
+                  style={{ background: isAct ? 'rgba(16,185,129,0.12)' : 'transparent', textDecoration: 'none' }}
+                  onMouseEnter={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+                  onMouseLeave={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <item.Icon size={14} strokeWidth={isAct ? 2.5 : 1.75} style={{ flexShrink: 0, color: isAct ? '#10b981' : 'var(--text-muted)' }} />
+                  {!collapsed && (
+                    <span style={{ fontSize: '0.8125rem', fontWeight: isAct ? 600 : 400, color: isAct ? '#10b981' : 'var(--text-secondary)' }}>
+                      {item.label}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Sports */}
