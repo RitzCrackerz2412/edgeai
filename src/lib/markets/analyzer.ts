@@ -181,9 +181,9 @@ export function analyzeMarket(
 
   // Opening odds defaults to current if not available
   const openingHomeML = odds.openingHomeMoneyline ?? odds.homeMoneyline;
-  const openingAwayML = odds.homeMoneyline; // symmetrical fallback
+  const openingAwayML = odds.awayMoneyline;
 
-  const spreadMove    = (odds.homeSpread ?? 0) - (odds.openingHomeMoneyline ? -3.5 : odds.homeSpread ?? 0);
+  const spreadMove    = 0; // no opening spread stored — movement tracking requires ODDS_API_KEY
   const mlMove        = odds.homeMoneyline - openingHomeML;
 
   const publicHomePct = odds.publicBettingPctHome ?? 50;

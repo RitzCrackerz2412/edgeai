@@ -16,7 +16,7 @@
 import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  LineChart, Line, ReferenceLine, ResponsiveContainer,
+  ResponsiveContainer,
 } from 'recharts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

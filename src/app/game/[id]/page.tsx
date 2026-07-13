@@ -43,8 +43,10 @@ export default async function GamePage({ params }: Props) {
   const simConfig = GAME_SIM_CONFIGS[id] ?? null;
 
   // For Final ESPN games, fetch period-by-period breakdown
-  const isFinal = game.status === 'Final';
-  const espnEventId = isFinal && id.startsWith('espn-') ? id.slice(5) : null;
+  const isFinal = game.status === 'Final' || game.status === 'Final/OT' || game.status === 'Final/SO';
+  const rawIdPart = id.startsWith('espn-') ? id.slice(5) : '';
+  const lastHyph = rawIdPart.lastIndexOf('-');
+  const espnEventId = isFinal && lastHyph > 0 ? rawIdPart.slice(lastHyph + 1) : null;
   const gameSummary = espnEventId
     ? await getEspnGameSummary(espnEventId, game.sport, game.league)
     : null;
@@ -152,7 +154,13 @@ export default async function GamePage({ params }: Props) {
           <TeamBlock team={awayTeam} isHome={false} label="Away" isWinner={!winnerIsHome} />
         </div>
 
-        <WinProbabilityBar homeTeam={homeTeam} awayTeam={awayTeam} homeWinPct={homeWinPct} />
+        <WinProbabilityBar
+          homeTeam={homeTeam}
+          awayTeam={awayTeam}
+          homeWinPct={homeWinPct}
+          monteCarloHomeWinPct={winnerIsHome ? prediction.monteCarloWinRate : 100 - prediction.monteCarloWinRate}
+          bayesianHomeWinPct={winnerIsHome ? prediction.bayesianProbability : 100 - prediction.bayesianProbability}
+        />
       </div>
 
       {/* Match Review — shown for completed games */}
@@ -309,8 +317,11 @@ function InfoRow({ label, value, small }: { label: string; value: string; small?
   return (
     <div className="flex justify-between items-start gap-2 py-1.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
       <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className={`font-medium text-right ${small ? 'text-xs max-w-[140px]' : ''}`} style={{ color: 'var(--text-primary)' }}>
-        {value}
+      <span
+        className={`font-medium text-right ${small ? 'text-xs max-w-[140px]' : ''}`}
+        style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)' }}
+      >
+        {value || '—'}
       </span>
     </div>
   );

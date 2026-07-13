@@ -12,7 +12,7 @@ interface Scenario {
 function buildScenarios(game: Game): Scenario[] {
   const { homeTeam, awayTeam, prediction } = game;
   const base = prediction.winProbability;
-  const topNeg = prediction.factors.filter(f => !f.positive).sort((a, b) => a.weight - b.weight).slice(0, 2);
+  const topNeg = prediction.factors.filter(f => !f.positive).sort((a, b) => b.weight - a.weight).slice(0, 2);
   const topPos = prediction.factors.filter(f => f.positive).sort((a, b) => b.weight - a.weight)[0];
 
   const scenarios: Scenario[] = [];
@@ -38,6 +38,7 @@ function buildScenarios(game: Game): Scenario[] {
 // Derive confidence categories from factors
 function buildCategories(game: Game) {
   const total = game.prediction.factors.reduce((s, f) => s + Math.abs(f.weight), 0);
+  if (total === 0) return [];
   const cats: Record<string, number> = {};
   game.prediction.factors.forEach(f => {
     const cat = f.label.toLowerCase().includes('player') || f.label.toLowerCase().includes('mahomes') ||

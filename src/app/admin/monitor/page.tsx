@@ -57,6 +57,7 @@ function StatusDot({ ok }: { ok: boolean }) {
 
 function SyncRow({ label, meta }: { label: string; meta: { lastSyncAt: string | null; gamesUpdated: number; errorsCount: number } | null }) {
   const lastSync = meta?.lastSyncAt ? new Date(meta.lastSyncAt) : null;
+  // eslint-disable-next-line react-hooks/purity -- Date.now() used for display only, not state
   const ageMin   = lastSync ? Math.floor((Date.now() - lastSync.getTime()) / 60_000) : null;
   const healthy  = ageMin !== null && ageMin < 10 && (meta?.errorsCount ?? 0) === 0;
   const stale    = ageMin === null || ageMin > 30;
@@ -106,6 +107,7 @@ export default function MonitorPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetch pattern
     fetchAll();
     const id = setInterval(fetchAll, 15_000);
     return () => clearInterval(id);

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import {
-  Moon, Bell, Heart, Database, Cpu, ChevronRight,
-  CheckCircle, XCircle, Clock, Wifi, WifiOff,
+  Moon, Bell, Heart, Database, Cpu,
+  XCircle, Clock, WifiOff,
 } from 'lucide-react';
 
 export default function SettingsPage() {

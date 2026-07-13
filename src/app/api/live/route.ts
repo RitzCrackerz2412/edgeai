@@ -14,7 +14,7 @@
 
 import { liveStore } from '@/lib/sync/store';
 import { syncBus }   from '@/lib/sync/event-bus';
-import type { LiveScore } from '@/lib/sync/store';
+
 
 export const dynamic = 'force-dynamic';
 

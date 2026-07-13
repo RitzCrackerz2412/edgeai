@@ -53,7 +53,6 @@ export function PredictionSimulator({ config }: { config: GameSimConfig }) {
   const currentProb = useMemo(() => computeProbability(config, state), [config, state]);
   const delta = currentProb - config.baseHomeWinProb;
   const winner = currentProb >= 50 ? config.homeTeamName : config.awayTeamName;
-  const loser  = currentProb >= 50 ? config.awayTeamName : config.homeTeamName;
   const displayProb = currentProb >= 50 ? currentProb : 100 - currentProb;
 
   const toggleVar = (id: string) =>

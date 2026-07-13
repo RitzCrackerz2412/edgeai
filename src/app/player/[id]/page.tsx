@@ -8,7 +8,7 @@ import { GameLogTable } from '@/components/players/GameLogTable';
 import { PlayerRadarChart } from '@/components/charts/PlayerRadarChart';
 import { TrendChart } from '@/components/charts/TrendChart';
 import {
-  ArrowLeft, Brain, TrendingUp, AlertCircle, CheckCircle, ChevronRight, BarChart2,
+  ArrowLeft, Brain, AlertCircle, CheckCircle, ChevronRight, BarChart2,
 } from 'lucide-react';
 
 type Props = { params: Promise<{ id: string }> };

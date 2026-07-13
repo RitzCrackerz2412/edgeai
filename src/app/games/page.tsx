@@ -89,7 +89,8 @@ function fmtDate(g: Game): string {
 
 function outcome(g: Game): 'correct' | 'incorrect' | null {
   if (!isFinal(g.status) || g.homeScore === undefined || g.awayScore === undefined) return null;
-  const actual = g.homeScore >= g.awayScore ? g.homeTeam.name : g.awayTeam.name;
+  if (g.homeScore === g.awayScore) return null; // draw — no winner to check
+  const actual = g.homeScore > g.awayScore! ? g.homeTeam.name : g.awayTeam.name;
   return actual === g.prediction.winner ? 'correct' : 'incorrect';
 }
 

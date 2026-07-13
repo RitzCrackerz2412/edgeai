@@ -3,8 +3,8 @@ import { Game } from '@/lib/types';
 export function HeadToHead({ game }: { game: Game }) {
   const { headToHead, homeTeam, awayTeam } = game;
   const total = headToHead.allTime.home + headToHead.allTime.away;
-  const homePct = (headToHead.allTime.home / total) * 100;
-  const awayPct = (headToHead.allTime.away / total) * 100;
+  const homePct = total > 0 ? (headToHead.allTime.home / total) * 100 : 50;
+  const awayPct = total > 0 ? (headToHead.allTime.away / total) * 100 : 50;
 
   return (
     <div className="space-y-4">
@@ -12,7 +12,9 @@ export function HeadToHead({ game }: { game: Game }) {
       <div className="space-y-2">
         <div className="flex justify-between text-sm font-semibold">
           <span style={{ color: homeTeam.color }}>{headToHead.allTime.home}</span>
-          <span style={{ color: 'var(--text-muted)' }}>All-time H2H ({total} games)</span>
+          <span style={{ color: 'var(--text-muted)' }}>
+            {total > 0 ? `All-time H2H (${total} games)` : 'No H2H history'}
+          </span>
           <span style={{ color: awayTeam.color }}>{headToHead.allTime.away}</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden flex">

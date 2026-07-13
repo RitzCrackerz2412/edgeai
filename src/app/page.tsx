@@ -5,10 +5,11 @@ import { ACTIVITY_FEED, TRENDING_TEAMS } from '@/lib/dashboardData';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import {
   ChevronRight, TrendingUp, Target, Zap, Brain,
-  TrendingDown, Minus, Check, X, Flame, RefreshCw,
+  Check, X, Flame, RefreshCw,
 } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Dashboard — EdgeAI' };
+export const revalidate = 60;
 
 const SPORT_COLOR: Record<string, string> = {
   NFL: '#2563eb', NBA: '#ea580c', MLB: '#16a34a', NHL: '#0ea5e9',

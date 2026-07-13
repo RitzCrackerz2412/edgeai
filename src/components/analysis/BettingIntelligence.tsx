@@ -70,7 +70,7 @@ export function BettingIntelligence({ game }: BettingIntelligenceProps) {
             <OddsRow label={`${homeTeam.abbreviation} spread`} open={odds.opening.spread} current={odds.current.spread} isSpread />
             <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
               <span>Line movement</span>
-              <span style={{ color: lineMove < 0 ? 'var(--red)' : 'var(--green)' }}>
+              <span style={{ color: lineMove < 0 ? 'var(--danger)' : 'var(--success)' }}>
                 {lineMove > 0 ? '+' : ''}{lineMove.toFixed(1)}
               </span>
             </div>
@@ -99,7 +99,7 @@ export function BettingIntelligence({ game }: BettingIntelligenceProps) {
           </div>
           <div className="flex items-center justify-between text-xs">
             <span style={{ color: 'var(--text-muted)' }}>Model vs market</span>
-            <span style={{ color: evPositive ? 'var(--green)' : 'var(--red)' }}>
+            <span style={{ color: evPositive ? 'var(--success)' : 'var(--danger)' }}>
               {evPositive ? '+' : ''}{odds.expectedValue.toFixed(1)}% EV
             </span>
           </div>
@@ -129,7 +129,7 @@ function OddsRow({ label, open, current, isSpread }: {
         </span>
         <span
           className="font-semibold"
-          style={{ color: moved ? (favorableMove ? 'var(--green)' : 'var(--red)') : 'var(--text-primary)' }}
+          style={{ color: moved ? (favorableMove ? 'var(--success)' : 'var(--danger)') : 'var(--text-primary)' }}
         >
           {isSpread ? (current > 0 ? '+' : '') + current : formatOdds(current)}
         </span>

@@ -149,9 +149,11 @@ export default function SportSchedule({ sportId }: { sportId: string }) {
 
   useEffect(() => {
     if (!hasLiveData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional early-exit guard
       setLoading(false);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetch pattern
     setLoading(true);
     setError(null);
 

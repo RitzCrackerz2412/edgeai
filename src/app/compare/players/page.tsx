@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
 import { PLAYER_DETAILS } from '@/lib/playerData';
 import type { PlayerDetail } from '@/lib/playerData';
 import {
@@ -275,6 +274,7 @@ export default function ComparePlayersPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetch pattern
     fetchRoster(sportFilter);
   }, [sportFilter, fetchRoster]);
 

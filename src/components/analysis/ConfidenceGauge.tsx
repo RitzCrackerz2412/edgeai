@@ -10,7 +10,6 @@ export function ConfidenceGauge({ confidence, winProbability, label }: Confidenc
   const color = confidence >= 80 ? '#22c55e' : confidence >= 65 ? '#f59e0b' : '#f97316';
   const r = 54;
   const circumference = 2 * Math.PI * r;
-  const confDash = (confidence / 100) * circumference;
   const winDash = (winProbability / 100) * circumference;
 
   return (

@@ -3,7 +3,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 
 export function FactorsList({ factors }: { factors: PredictionFactor[] }) {
   const positive = factors.filter(f => f.positive).sort((a, b) => b.weight - a.weight);
-  const negative = factors.filter(f => !f.positive).sort((a, b) => a.weight - b.weight);
+  const negative = factors.filter(f => !f.positive).sort((a, b) => b.weight - a.weight);
 
   return (
     <div className="grid sm:grid-cols-2 gap-6">
@@ -37,7 +37,7 @@ function FactorRow({ factor }: { factor: PredictionFactor }) {
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{factor.detail}</p>
         </div>
         <span className="text-xs font-mono shrink-0" style={{ color: 'var(--text-muted)' }}>
-          {factor.positive ? '+' : ''}{factor.weight.toFixed(1)}
+          {factor.positive ? '+' : '-'}{factor.weight.toFixed(1)}
         </span>
       </div>
       <div className="ml-5 h-0.5 rounded-full" style={{ background: 'var(--border-default)' }}>

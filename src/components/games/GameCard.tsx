@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Game } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
-import { confidenceColor, formatOdds, sportIcon } from '@/lib/utils';
+import { formatOdds, sportIcon } from '@/lib/utils';
 
 interface GameCardProps {
   game: Game;
@@ -205,9 +205,9 @@ export function GameCard({ game }: GameCardProps) {
 }
 
 function TeamSide({
-  name, abbr, record, winPct, isWinner, color, right,
+  abbr, record, winPct, isWinner, color, right,
 }: {
-  name: string; abbr: string; record: string;
+  name?: string; abbr: string; record: string;
   winPct: number; isWinner: boolean; color: string; right?: boolean;
 }) {
   return (
@@ -220,7 +220,7 @@ function TeamSide({
           {abbr.slice(0, 3)}
         </div>
         {isWinner && (
-          <span className="text-xs" style={{ color: 'var(--green)' }}>▲</span>
+          <span className="text-xs" style={{ color: 'var(--success)' }}>▲</span>
         )}
       </div>
       <span className="text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>

@@ -16,7 +16,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
 
 // ── Type shapes mirroring API responses ──────────────────────────────────────

@@ -6,9 +6,11 @@ interface WinProbabilityBarProps {
   homeTeam: Team;
   awayTeam: Team;
   homeWinPct: number;
+  monteCarloHomeWinPct?: number;
+  bayesianHomeWinPct?: number;
 }
 
-export function WinProbabilityBar({ homeTeam, awayTeam, homeWinPct }: WinProbabilityBarProps) {
+export function WinProbabilityBar({ homeTeam, awayTeam, homeWinPct, monteCarloHomeWinPct, bayesianHomeWinPct }: WinProbabilityBarProps) {
   const awayWinPct = 100 - homeWinPct;
 
   return (
@@ -32,10 +34,16 @@ export function WinProbabilityBar({ homeTeam, awayTeam, homeWinPct }: WinProbabi
           {awayWinPct.toFixed(1)}%
         </div>
       </div>
-      <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
-        <span>Monte Carlo: {homeWinPct.toFixed(1)}%</span>
-        <span>Bayesian: {(homeWinPct - 0.6).toFixed(1)}%</span>
-      </div>
+      {(monteCarloHomeWinPct !== undefined || bayesianHomeWinPct !== undefined) && (
+        <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+          {monteCarloHomeWinPct !== undefined && (
+            <span>Monte Carlo: {monteCarloHomeWinPct.toFixed(1)}%</span>
+          )}
+          {bayesianHomeWinPct !== undefined && (
+            <span>Bayesian: {bayesianHomeWinPct.toFixed(1)}%</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

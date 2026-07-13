@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Game } from '@/lib/types';
-import { formatOdds, sportIcon } from '@/lib/utils';
+import { sportIcon } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Calendar, MapPin, Wind } from 'lucide-react';
 

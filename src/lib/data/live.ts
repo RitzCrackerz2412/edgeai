@@ -91,8 +91,8 @@ const SPORT_SCORING: Record<string, { leagueAvg: number; homeAdv: number; eloFac
   MLB:    { leagueAvg: 4.5,   homeAdv: 0.18, eloFactor: 0.04, noiseRange: 1 },
   NHL:    { leagueAvg: 3.0,   homeAdv: 0.15, eloFactor: 0.04, noiseRange: 1 },
   Soccer: { leagueAvg: 1.4,   homeAdv: 0.22, eloFactor: 0.05, noiseRange: 1 },
-  NCAAF:  { leagueAvg: 26.0,  homeAdv: 3.5,  eloFactor: 0.09, noiseRange: 7 },
-  NCAAB:  { leagueAvg: 72.0,  homeAdv: 3.8,  eloFactor: 0.03, noiseRange: 5 },
+  'NCAA Football':    { leagueAvg: 26.0,  homeAdv: 3.5,  eloFactor: 0.09, noiseRange: 7 },
+  'NCAA Basketball':  { leagueAvg: 72.0,  homeAdv: 3.8,  eloFactor: 0.03, noiseRange: 5 },
 };
 
 // Deterministic per-matchup noise using a simple string hash.
@@ -126,8 +126,8 @@ function predictScores(home: Team, away: Team): { home: number; away: number } {
   const hash  = matchupHash(home.id, away.id);
   const noise = ((hash % (cfg.noiseRange * 2 + 1)) - cfg.noiseRange) * 0.5;
 
-  let predHome = homeBase + cfg.homeAdv + eloEdge / 2 + momAdj / 2 + noise;
-  let predAway = awayBase - cfg.homeAdv * 0.5 - eloEdge / 2 - momAdj / 2 - noise * 0.6;
+  const predHome = homeBase + cfg.homeAdv + eloEdge / 2 + momAdj / 2 + noise;
+  const predAway = awayBase - cfg.homeAdv * 0.5 - eloEdge / 2 - momAdj / 2 - noise * 0.6;
 
   const floor = cfg.leagueAvg * 0.30;
   return {
@@ -271,8 +271,9 @@ export function rawGameToGame(raw: RawGame): Game | null {
   const awayTeam = findTeam(raw.sport, raw.awayTeamName);
 
   // Build minimal fallbacks so live games always show even if team not in our dataset
-  const home = homeTeam ?? makeFallbackTeam(raw.sport, raw.league, raw.homeTeamName, raw.homeTeamId.slice(0, 3).toUpperCase(), '6366f1');
-  const away = awayTeam ?? makeFallbackTeam(raw.sport, raw.league, raw.awayTeamName, raw.awayTeamId.slice(0, 3).toUpperCase(), 'ef4444');
+  const toAbbr = (name: string) => name.split(' ').map(w => w[0] ?? '').join('').slice(0, 3).toUpperCase() || '???';
+  const home = homeTeam ?? makeFallbackTeam(raw.sport, raw.league, raw.homeTeamName, toAbbr(raw.homeTeamName), '6366f1');
+  const away = awayTeam ?? makeFallbackTeam(raw.sport, raw.league, raw.awayTeamName, toAbbr(raw.awayTeamName), 'ef4444');
 
   const dateObj = new Date(raw.scheduledAt);
   const dateStr = new Intl.DateTimeFormat('en-CA', {

@@ -112,6 +112,7 @@ export function LiveDataProvider({ children }: { children: React.ReactNode }) {
 
   // Start polling; accelerate to LIVE_INTERVAL_MS when there are live games
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetch pattern
     fetchStatus();
 
     function schedule() {

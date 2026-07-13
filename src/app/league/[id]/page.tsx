@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getLeagueById, getLeagues } from '@/lib/api';
 import type { LeagueStanding, LeagueFixture } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 export async function generateStaticParams() {
   const leagues = await getLeagues();
