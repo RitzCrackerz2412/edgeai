@@ -43,7 +43,7 @@ export async function getQuote(ticker: string): Promise<StockQuote | null> {
       name:            q.longName ?? q.shortName ?? ticker,
       price:           q.regularMarketPrice ?? 0,
       change:          q.regularMarketChange ?? 0,
-      changePct:       +((q.regularMarketChangePercent ?? 0) * 100).toFixed(2),
+      changePct:       +(q.regularMarketChangePercent ?? 0).toFixed(2),
       open:            q.regularMarketOpen ?? 0,
       high:            q.regularMarketDayHigh ?? 0,
       low:             q.regularMarketDayLow ?? 0,
@@ -55,9 +55,9 @@ export async function getQuote(ticker: string): Promise<StockQuote | null> {
       exchange:        q.fullExchangeName ?? q.exchange ?? '',
       marketState:     (q.marketState as StockQuote['marketState']) ?? 'CLOSED',
       preMarketPrice:  n(q.preMarketPrice),
-      preMarketChange: typeof q.preMarketChangePercent === 'number' ? +(q.preMarketChangePercent * 100).toFixed(2) : null,
+      preMarketChange: typeof q.preMarketChangePercent === 'number' ? +q.preMarketChangePercent.toFixed(2) : null,
       postMarketPrice: n(q.postMarketPrice),
-      postMarketChange: typeof q.postMarketChangePercent === 'number' ? +(q.postMarketChangePercent * 100).toFixed(2) : null,
+      postMarketChange: typeof q.postMarketChangePercent === 'number' ? +q.postMarketChangePercent.toFixed(2) : null,
       week52High:      q.fiftyTwoWeekHigh ?? 0,
       week52Low:       q.fiftyTwoWeekLow ?? 0,
       beta:            n(kstat?.beta ?? sd?.beta ?? q.beta),
@@ -406,7 +406,7 @@ export async function getMarketOverview(): Promise<MarketOverview> {
           name:      INDEX_NAMES[qr.symbol] ?? qr.shortName ?? qr.symbol,
           price:     qr.regularMarketPrice ?? 0,
           change:    qr.regularMarketChange ?? 0,
-          changePct: +((qr.regularMarketChangePercent ?? 0) * 100).toFixed(2),
+          changePct: +(qr.regularMarketChangePercent ?? 0).toFixed(2),
         });
       }
     }
@@ -419,7 +419,7 @@ export async function getMarketOverview(): Promise<MarketOverview> {
         sectors.push({
           sector:    SECTOR_ETFS[i]?.sector ?? q.symbol,
           symbol:    q.symbol,
-          changePct: +((q.regularMarketChangePercent ?? 0) * 100).toFixed(2),
+          changePct: +(q.regularMarketChangePercent ?? 0).toFixed(2),
         });
       }
     }
@@ -429,7 +429,7 @@ export async function getMarketOverview(): Promise<MarketOverview> {
       name:      String(q.shortName ?? q.longName ?? q.symbol ?? ''),
       price:     Number(q.regularMarketPrice ?? 0),
       change:    Number(q.regularMarketChange ?? 0),
-      changePct: +(Number(q.regularMarketChangePercent ?? 0) * 100).toFixed(2),
+      changePct: +(Number(q.regularMarketChangePercent ?? 0)).toFixed(2),
       volume:    Number(q.regularMarketVolume ?? 0),
       marketCap: n(q.marketCap),
     });

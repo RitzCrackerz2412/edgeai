@@ -1,8 +1,10 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { getUpcomingGames, getAccuracyStats } from '@/lib/api';
 import { ACTIVITY_FEED, TRENDING_TEAMS } from '@/lib/dashboardData';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
+import { DashboardMarketWidget } from '@/components/finance/DashboardMarketWidget';
 import {
   ChevronRight, TrendingUp, Target, Zap, Brain,
   Check, X, Flame, RefreshCw,
@@ -589,6 +591,21 @@ export default async function HomePage() {
               ))}
             </div>
           </section>
+
+          {/* Market Snapshot + Top Stocks + News */}
+          <Suspense fallback={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {[120, 180, 140].map(h => (
+                <div key={h} style={{
+                  height: h, borderRadius: 'var(--r-lg)', background: 'var(--bg-card)',
+                  border: '1px solid var(--border-default)',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }} />
+              ))}
+            </div>
+          }>
+            <DashboardMarketWidget />
+          </Suspense>
 
           {/* Quick Navigation — varied widths, no uniform grid */}
           <section>
