@@ -383,9 +383,9 @@ export function LiveDashboardMarket({
                   {a.title}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: 4 }}>
-                  {a.source && (
+                  {a.publisher && (
                     <span style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: FC, background: `${FC}15`, padding: '0.1rem 0.3rem', borderRadius: 2 }}>
-                      {a.source}
+                      {a.publisher}
                     </span>
                   )}
                   <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)' }}>{timeAgo(a.publishedAt)}</span>

@@ -243,7 +243,7 @@ export async function DashboardMarketWidget() {
                   {article.title}
                 </div>
                 <div style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  {article.source}{article.publishedAt ? ` · ${timeAgo(article.publishedAt)}` : ''}
+                  {article.publisher}{article.publishedAt ? ` · ${timeAgo(article.publishedAt)}` : ''}
                 </div>
               </a>
             ))}
