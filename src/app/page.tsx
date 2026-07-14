@@ -4,11 +4,13 @@ import { Suspense } from 'react';
 import { getUpcomingGames, getAccuracyStats } from '@/lib/api';
 import { ACTIVITY_FEED, TRENDING_TEAMS } from '@/lib/dashboardData';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
-import { DashboardMarketWidget } from '@/components/finance/DashboardMarketWidget';
+import { LiveDashboardMarket } from '@/components/finance/LiveDashboardMarket';
+import { getMarketOverview } from '@/lib/finance/providers/yahoo';
 import {
   ChevronRight, TrendingUp, Target, Zap, Brain,
   Check, X, Flame, RefreshCw,
 } from 'lucide-react';
+
 
 export const metadata: Metadata = { title: 'Dashboard — EdgeAI' };
 export const revalidate = 60;
@@ -76,7 +78,13 @@ function ActivityIcon({ type }: { type: string }) {
 }
 
 export default async function HomePage() {
-  const [games, accuracy] = await Promise.all([getUpcomingGames(), getAccuracyStats()]);
+  const [[games, accuracy], overviewRes] = await Promise.all([
+    Promise.all([getUpcomingGames(), getAccuracyStats()]),
+    getMarketOverview().catch(() => null),
+  ]);
+
+  const marketOverview = overviewRes;
+
 
   const liveGames = games.filter(g => isLive(g.status));
   const upcomingToday = games
@@ -592,21 +600,6 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* Market Snapshot + Top Stocks + News */}
-          <Suspense fallback={
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {[120, 180, 140].map(h => (
-                <div key={h} style={{
-                  height: h, borderRadius: 'var(--r-lg)', background: 'var(--bg-card)',
-                  border: '1px solid var(--border-default)',
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                }} />
-              ))}
-            </div>
-          }>
-            <DashboardMarketWidget />
-          </Suspense>
-
           {/* Quick Navigation — varied widths, no uniform grid */}
           <section>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
@@ -638,6 +631,18 @@ export default async function HomePage() {
           </section>
         </div>
       </div>
+
+      {/* ── Full-width Live Market Intelligence ─────────────────────── */}
+      <LiveDashboardMarket
+        initialIndices={marketOverview?.indices ?? []}
+        initialMarketState={marketOverview?.marketState ?? 'CLOSED'}
+        initialGainers={marketOverview?.gainers ?? []}
+        initialLosers={marketOverview?.losers ?? []}
+        initialActives={marketOverview?.actives ?? []}
+        initialSectors={marketOverview?.sectors ?? []}
+        initialWatchlist={[]}
+        initialNews={[]}
+      />
     </div>
   );
 }
