@@ -192,7 +192,7 @@ export async function getHistory(ticker: string, range: HistRange = '1y'): Promi
     const history: any[] = await yahooFinance.historical(ticker, {
       period1:  period1Map[range],
       period2:  new Date(),
-      interval: intervalMap[range],
+      interval: intervalMap[range] as any,
     });
 
     return history.map((h: any) => ({

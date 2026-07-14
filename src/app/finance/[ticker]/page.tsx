@@ -159,10 +159,10 @@ export default async function StockPage({ params }: Props) {
               initialChange={quote.change}
               initialChangePct={quote.changePct}
               initialMarketState={quote.marketState}
-              initialPreMarketPrice={quote.preMarketPrice}
-              initialPreMarketChange={quote.preMarketChange}
-              initialPostMarketPrice={quote.postMarketPrice}
-              initialPostMarketChange={quote.postMarketChange}
+              initialPreMarketPrice={quote.preMarketPrice ?? null}
+              initialPreMarketChange={quote.preMarketChange ?? null}
+              initialPostMarketPrice={quote.postMarketPrice ?? null}
+              initialPostMarketChange={quote.postMarketChange ?? null}
             />
           </div>
 
