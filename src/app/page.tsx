@@ -607,7 +607,8 @@ export default async function HomePage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
               {[
-                { href: '/accuracy',  label: 'Accuracy',  sub: 'Model metrics',     color: 'var(--success)', wide: true },
+                { href: '/accuracy',    label: 'Accuracy',    sub: 'Model metrics',     color: 'var(--success)', wide: true },
+                { href: '/prizepicks', label: 'PrizePicks +EV', sub: 'Line comparison · no-vig odds', color: '#f59e0b', wide: true },
                 { href: '/matchup',   label: 'Matchup',   sub: 'Compare teams',     color: 'var(--accent)' },
                 { href: '/games',     label: 'Games',     sub: `${games.length} fixtures`, color: 'var(--info)' },
                 { href: '/history',   label: 'History',   sub: 'Prediction log',    color: 'var(--text-muted)' },

@@ -19,6 +19,7 @@ import { GameContextCard } from '@/components/analysis/GameContextCard';
 import { PredictionSimulator } from '@/components/analysis/PredictionSimulator';
 import { MatchReview } from '@/components/analysis/MatchReview';
 import { MarketComparison } from '@/components/analysis/MarketComparison';
+import { PlayerPropsEV } from '@/components/analysis/PlayerPropsEV';
 import { formatDate, sportIcon } from '@/lib/utils';
 import { ArrowLeft, Calendar, MapPin, Wind, CheckCircle } from 'lucide-react';
 import type { Team } from '@/lib/types';
@@ -246,6 +247,15 @@ export default async function GamePage({ params }: Props) {
           <BettingIntelligence game={game} />
         </Card>
       </div>
+
+      {/* PrizePicks +EV Player Props */}
+      <Card title="PrizePicks +EV Player Props" elevated>
+        <PlayerPropsEV
+          sport={game.sport}
+          homeTeam={homeTeam.name}
+          awayTeam={awayTeam.name}
+        />
+      </Card>
 
       {/* Prediction Market Intelligence */}
       <Card title="Prediction Market Intelligence" elevated>
