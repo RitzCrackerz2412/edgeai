@@ -237,8 +237,8 @@ export async function getAnalystData(ticker: string, currentPrice: number): Prom
     let consensus: AnalystRatings['consensus'] = 'Hold';
     if      (bullPct >= 0.7)  consensus = 'Strong Buy';
     else if (bullPct >= 0.55) consensus = 'Buy';
-    else if (bearPct >= 0.55) consensus = 'Sell';
     else if (bearPct >= 0.7)  consensus = 'Strong Sell';
+    else if (bearPct >= 0.55) consensus = 'Sell';
 
     const avgTarget  = n(fd?.targetMeanPrice);
     const highTarget = n(fd?.targetHighPrice);
@@ -442,8 +442,14 @@ export async function getMarketOverview(): Promise<MarketOverview> {
       if (aRes.status === 'fulfilled') actives = ((aRes.value as any).quotes ?? []).map(toMover);
     }
 
-    const firstIdx = indices[0];
-    const marketState: MarketOverview['marketState'] = firstIdx ? 'REGULAR' : 'CLOSED';
+    // Derive market state from the actual Yahoo marketState field on the first index quote.
+    // Yahoo returns PRE/POST/PREPRE/POSTPOST/REGULAR/CLOSED — map to our union.
+    const rawState: string = (indexResults.status === 'fulfilled' && (indexResults.value[0] as any)?.marketState) || 'CLOSED';
+    const marketState: MarketOverview['marketState'] =
+      rawState === 'REGULAR' ? 'REGULAR' :
+      (rawState === 'PRE' || rawState === 'PREPRE') ? 'PRE' :
+      (rawState === 'POST' || rawState === 'POSTPOST') ? 'POST' :
+      'CLOSED';
 
     return { indices, gainers, losers, actives, sectors, marketState, updatedAt: new Date().toISOString() };
   } catch {

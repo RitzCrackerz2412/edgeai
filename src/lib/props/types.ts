@@ -15,6 +15,7 @@ export type PropMarket =
   | 'player_blocks'
   | 'player_steals'
   | 'player_turnovers'
+  | 'player_goals'
   | 'player_pass_yds'
   | 'player_rush_yds'
   | 'player_reception_yds'
@@ -33,6 +34,7 @@ export const MARKET_LABELS: Record<PropMarket, string> = {
   player_blocks:       'Blocks',
   player_steals:       'Steals',
   player_turnovers:    'Turnovers',
+  player_goals:        'Goals',
   player_pass_yds:     'Pass Yards',
   player_rush_yds:     'Rush Yards',
   player_reception_yds:'Rec Yards',

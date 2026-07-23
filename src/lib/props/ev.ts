@@ -13,7 +13,6 @@ import type {
   PlayerProp,
   PropEVAnalysis,
   EVRating,
-  POWER_PLAY_MULTIPLIERS,
 } from './types';
 
 const MULTIPLIERS: Record<number, number> = { 2: 3, 3: 5, 4: 10, 5: 20, 6: 25 };

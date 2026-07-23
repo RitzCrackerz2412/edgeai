@@ -113,7 +113,7 @@ function parseEventProps(event: OddsAPIEvent): PlayerProp[] {
   // Group by player + market
   const propMap = new Map<string, {
     player: string; team: string; line: number; market: PropMarket;
-    overLines: BookLine[]; underLines: BookLine[];
+    overLines: BookLine[];
   }>();
 
   for (const book of event.bookmakers) {
@@ -140,13 +140,12 @@ function parseEventProps(event: OddsAPIEvent): PlayerProp[] {
         if (!propMap.has(mapKey)) {
           propMap.set(mapKey, {
             player, team: '', line, market: marketKey,
-            overLines: [], underLines: [],
+            overLines: [],
           });
         }
 
         const entry = propMap.get(mapKey)!;
         entry.overLines.push({ book: book.title, overOdds: decimalToAmerican(sides.over.price), underOdds: decimalToAmerican(sides.under.price) });
-        entry.underLines.push({ book: book.title, overOdds: decimalToAmerican(sides.over.price), underOdds: decimalToAmerican(sides.under.price) });
       }
     }
   }

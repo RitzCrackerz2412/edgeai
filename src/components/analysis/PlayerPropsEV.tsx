@@ -235,10 +235,12 @@ export function PlayerPropsEV({ sport, homeTeam, awayTeam }: Props) {
   const [props, setProps]       = useState<PropEVAnalysis[]>([]);
   const [loading, setLoading]   = useState(true);
   const [hasKey, setHasKey]     = useState(true);
+  const [error, setError]       = useState<string | null>(null);
   const [filter, setFilter]     = useState<'all' | 'over' | 'under'>('all');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `/api/props/ev?sport=${encodeURIComponent(sport)}&home=${encodeURIComponent(homeTeam)}&away=${encodeURIComponent(awayTeam)}`,
@@ -247,7 +249,12 @@ export function PlayerPropsEV({ sport, homeTeam, awayTeam }: Props) {
       if (data.ok) {
         setProps(data.props ?? []);
         setHasKey(data.hasOddsKey);
+      } else {
+        setHasKey(false);
+        setError(data.error ?? 'Failed to load props');
       }
+    } catch (e) {
+      setError('Network error — could not load player props');
     } finally {
       setLoading(false);
     }
@@ -270,7 +277,14 @@ export function PlayerPropsEV({ sport, homeTeam, awayTeam }: Props) {
         Line comparison methodology: no-vig fair odds from sharp sportsbooks vs PrizePicks implied 50%. For informational purposes only.
       </p>
 
-      {!hasKey && (
+      {error && (
+        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.625rem 0.75rem', borderRadius: 8, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <AlertCircle size={14} style={{ color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{error}</p>
+        </div>
+      )}
+
+      {!error && !hasKey && (
         <div style={{ display: 'flex', gap: '0.5rem', padding: '0.625rem 0.75rem', borderRadius: 8, background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)' }}>
           <AlertCircle size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
