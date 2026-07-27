@@ -20,6 +20,9 @@ import { PredictionSimulator } from '@/components/analysis/PredictionSimulator';
 import { MatchReview } from '@/components/analysis/MatchReview';
 import { MarketComparison } from '@/components/analysis/MarketComparison';
 import { PlayerPropsEV } from '@/components/analysis/PlayerPropsEV';
+import { EnsembleBreakdown } from '@/components/analysis/EnsembleBreakdown';
+import { KellyCriterion } from '@/components/analysis/KellyCriterion';
+import { computeSubModels } from '@/lib/submodels';
 import { formatDate, sportIcon } from '@/lib/utils';
 import { ArrowLeft, Calendar, MapPin, Wind, CheckCircle } from 'lucide-react';
 import type { Team } from '@/lib/types';
@@ -39,6 +42,7 @@ export default async function GamePage({ params }: Props) {
   if (!game) notFound();
 
   const { homeTeam, awayTeam, prediction } = game;
+  const ensemble     = computeSubModels(game);
   const winnerIsHome = prediction.winner === homeTeam.name;
   const homeWinPct = winnerIsHome ? prediction.winProbability : 100 - prediction.winProbability;
   const simConfig = GAME_SIM_CONFIGS[id] ?? null;
@@ -198,6 +202,14 @@ export default async function GamePage({ params }: Props) {
             </div>
           </Card>
 
+          <Card title="Ensemble Breakdown">
+            <EnsembleBreakdown
+              ensemble={ensemble}
+              homeTeam={homeTeam.name}
+              awayTeam={awayTeam.name}
+            />
+          </Card>
+
           <Card title="Key Players">
             <div className="space-y-2 text-sm">
               <InfoRow label="Player of match"  value={prediction.playerOfMatch} />
@@ -247,6 +259,16 @@ export default async function GamePage({ params }: Props) {
           <BettingIntelligence game={game} />
         </Card>
       </div>
+
+      {/* Kelly Criterion bet sizing */}
+      <Card title="Kelly Criterion Bet Sizing">
+        <KellyCriterion
+          ensembleAvg={ensemble.ensembleAvg}
+          highUncertainty={ensemble.highUncertainty}
+          homeTeam={homeTeam.name}
+          awayTeam={awayTeam.name}
+        />
+      </Card>
 
       {/* PrizePicks +EV Player Props */}
       <Card title="PrizePicks +EV Player Props" elevated>

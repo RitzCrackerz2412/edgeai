@@ -7,6 +7,7 @@ import { CalibrationChart } from '@/components/accuracy/CalibrationChart';
 import { SportAccuracyChart } from '@/components/accuracy/SportAccuracyChart';
 import { AccuracyFilters } from '@/components/accuracy/AccuracyFilters';
 import { RollingAccuracyChart } from '@/components/accuracy/RollingAccuracyChart';
+import { DriftDetection } from '@/components/accuracy/DriftDetection';
 
 export const metadata: Metadata = { title: 'Prediction Accuracy — EdgeAI' };
 
@@ -70,6 +71,14 @@ export default async function AccuracyPage({ searchParams }: Props) {
         <StatCard label="ROC AUC"         value={stats.rocAuc}         sub="1.0 = perfect · 0.5 = random" />
         <StatCard label="Avg Margin Err"  value={`${stats.avgMarginError} pts`} sub="Mean absolute score diff error" />
       </div>
+
+      {/* Model drift detection */}
+      <Section title="Model Drift Detection">
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+          Compares rolling accuracy (last {20} games per sport) against all-time baseline. Alerts when a sport drops {8}+ percentage points below its baseline — a signal of systematic prediction errors.
+        </p>
+        <DriftDetection bySport={stats.bySport} />
+      </Section>
 
       {/* Rolling accuracy + calibration */}
       <div className="grid lg:grid-cols-2 gap-6">

@@ -122,6 +122,8 @@ export interface PredictionRecord {
   sport: Sport;
   prediction: string;
   confidence: number;
+  /** Ensemble average from the 3-model system (Feature 3). Falls back to confidence for pre-existing records. */
+  ensembleAvg?: number;
   actual: string | null;
   correct: boolean | null;
   margin: number | null;

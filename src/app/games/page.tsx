@@ -3,6 +3,8 @@ import { ChevronRight } from 'lucide-react';
 import { getUpcomingGames } from '@/lib/api';
 import type { Game } from '@/lib/types';
 import { isoDateInTZ } from '@/lib/utils';
+import { computeSubModels } from '@/lib/submodels';
+import { DisagreementSortControl } from '@/components/games/DisagreementSortControl';
 
 export const revalidate = 60;
 
@@ -160,7 +162,7 @@ function LiveScoreCard({ game: g }: { game: Game }) {
 
 // ── Fixture Row ───────────────────────────────────────────────────────────────
 
-function FixtureRow({ game: g }: { game: Game }) {
+function FixtureRow({ game: g, highUncertainty = false }: { game: Game; highUncertainty?: boolean }) {
   const scored    = hasScore(g);
   const homeLeads = scored && g.homeScore! > g.awayScore!;
   const awayLeads = scored && g.awayScore! > g.homeScore!;
@@ -229,7 +231,7 @@ function FixtureRow({ game: g }: { game: Game }) {
       </div>
 
       {/* Prediction */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'0.1875rem' }}>
         {result === 'correct' && (
           <span style={{ fontSize:'0.5625rem', fontWeight:700, padding:'0.125rem 0.375rem', borderRadius:3, background:'rgba(16,185,129,0.1)', color:'#10b981' }}>✓</span>
         )}
@@ -244,6 +246,11 @@ function FixtureRow({ game: g }: { game: Game }) {
         {isLive(g.status) && (
           <span className="live-dot-sm" />
         )}
+        {highUncertainty && (
+          <span title="Three independent models disagree by more than 12 percentage points — treat prediction with caution." style={{ fontSize:'0.5rem', fontWeight:700, padding:'0.0625rem 0.3125rem', borderRadius:3, background:'rgba(245,158,11,0.1)', color:'#f59e0b', whiteSpace:'nowrap', cursor:'help' }}>
+            ⚠ Uncertain
+          </span>
+        )}
       </div>
 
       {/* Arrow */}
@@ -254,7 +261,7 @@ function FixtureRow({ game: g }: { game: Game }) {
 
 // ── League group ──────────────────────────────────────────────────────────────
 
-function LeagueGroup({ league, sport, games }: { league: string; sport: string; games: Game[] }) {
+function LeagueGroup({ league, sport, games, disagreementMap }: { league: string; sport: string; games: Game[]; disagreementMap: Map<string, boolean> }) {
   const color = SPORT_COLOR[sport] ?? 'var(--accent-light)';
   return (
     <>
@@ -267,7 +274,7 @@ function LeagueGroup({ league, sport, games }: { league: string; sport: string; 
           {games.length}
         </span>
       </div>
-      {games.map(g => <FixtureRow key={g.id} game={g} />)}
+      {games.map(g => <FixtureRow key={g.id} game={g} highUncertainty={disagreementMap.get(g.id) ?? false} />)}
     </>
   );
 }
@@ -275,9 +282,9 @@ function LeagueGroup({ league, sport, games }: { league: string; sport: string; 
 // ── Section ───────────────────────────────────────────────────────────────────
 
 function FixtureSection({
-  label, games, sectionDate, isLiveSection,
+  label, games, sectionDate, isLiveSection, disagreementMap,
 }: {
-  label: string; games: Game[]; sectionDate?: string; isLiveSection?: boolean;
+  label: string; games: Game[]; sectionDate?: string; isLiveSection?: boolean; disagreementMap: Map<string, boolean>;
 }) {
   const leagues = groupByLeague(games);
 
@@ -302,7 +309,7 @@ function FixtureSection({
         /* Non-live: flat fixture list grouped by league */
         <div className="fixture-section">
           {leagues.map(({ league, sport, games: lg }) => (
-            <LeagueGroup key={league} league={league} sport={sport} games={lg} />
+            <LeagueGroup key={league} league={league} sport={sport} games={lg} disagreementMap={disagreementMap} />
           ))}
         </div>
       )}
@@ -312,11 +319,34 @@ function FixtureSection({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function GamesPage() {
+export default async function GamesPage({ searchParams }: { searchParams: Promise<{ sort?: string }> }) {
+  const { sort } = await searchParams;
+  const sortByDisagreement = sort === 'disagreement';
+
   const games = await getUpcomingGames({ includeRecent: true });
+
+  // Pre-compute disagreement for every game — pure function, no extra I/O
+  const disagreementMap = new Map<string, boolean>();
+  const disagreementScore = new Map<string, number>();
+  for (const g of games) {
+    const e = computeSubModels(g);
+    disagreementMap.set(g.id, e.highUncertainty);
+    disagreementScore.set(g.id, e.disagreementPct);
+  }
 
   const buckets: Record<Bucket, Game[]> = { live:[], today:[], tomorrow:[], week:[], later:[], finished:[] };
   for (const g of games) buckets[classify(g)].push(g);
+
+  // When disagreement sort is active, flatten non-live/non-finished games and re-sort
+  if (sortByDisagreement) {
+    const flat = [
+      ...buckets.today, ...buckets.tomorrow, ...buckets.week, ...buckets.later,
+    ].sort((a, b) => (disagreementScore.get(b.id) ?? 0) - (disagreementScore.get(a.id) ?? 0));
+    buckets.today = flat;
+    buckets.tomorrow = [];
+    buckets.week = [];
+    buckets.later = [];
+  }
 
   const liveCount  = buckets.live.length;
   const todayDate  = new Date().toLocaleDateString('en-US', {
@@ -348,6 +378,7 @@ export default async function GamesPage() {
             <span className="live-dot-sm" />{liveCount} Live
           </span>
         )}
+        <DisagreementSortControl active={sortByDisagreement} />
         <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', marginLeft:'auto' }}>
           {todayDate} · ET
         </span>
@@ -359,19 +390,21 @@ export default async function GamesPage() {
           label="Live Now"
           games={buckets.live}
           isLiveSection
+          disagreementMap={disagreementMap}
         />
       )}
 
       {/* Time-bucketed sections */}
       {SECTIONS.map(({ key, label }) => {
-        const sg = sortGames(buckets[key]);
+        const sg = sortByDisagreement && key === 'today' ? buckets[key] : sortGames(buckets[key]);
         const firstDate = sg[0] ? fmtDate(sg[0]) : undefined;
         return (
           <FixtureSection
             key={key}
-            label={label}
+            label={sortByDisagreement && key === 'today' ? 'All Games — Most Uncertain First' : label}
             games={sg}
-            sectionDate={key !== 'today' ? firstDate : undefined}
+            sectionDate={!sortByDisagreement && key !== 'today' ? firstDate : undefined}
+            disagreementMap={disagreementMap}
           />
         );
       })}
