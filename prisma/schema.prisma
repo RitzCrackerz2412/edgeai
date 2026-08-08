@@ -107,8 +107,9 @@ model GameOutcome {
   finalStatus     String   @default("final")
   recordedAt      DateTime @default(now())
 
-  game             Game              @relation(fields: [gameId], references: [id])
-  validationResult ValidationResult?
+  game               Game              @relation(fields: [gameId], references: [id])
+  validationResult   ValidationResult? @relation(fields: [validationResultId], references: [id])
+  validationResultId String?
 }
 
 // ── Accuracy & Validation ─────────────────────────────────────────────────────
@@ -120,13 +121,14 @@ model ValidationResult {
   sport          String
   correct        Boolean
   rawProbability Float
-  actualOutcome  Int      // 1 = predicted winner won, 0 = upset
-  brierScore     Float    // (p - o)^2
-  logLoss        Float    // -[o·log(p) + (1-o)·log(1-p)]
-  marginError    Float    // |predicted_margin - actual_margin|
+  actualOutcome  Int // 1 = predicted winner won, 0 = upset
+  brierScore     Float // (p - o)^2
+  logLoss        Float // -[o·log(p) + (1-o)·log(1-p)]
+  marginError    Float // |predicted_margin - actual_margin|
   validatedAt    DateTime @default(now())
 
-  prediction Prediction @relation(fields: [predictionId], references: [id])
+  prediction   Prediction    @relation(fields: [predictionId], references: [id])
+  gameOutcomes GameOutcome[]
 
   @@index([sport])
   @@index([validatedAt])
@@ -137,7 +139,7 @@ model CalibrationRecord {
   id             String   @id @default(cuid())
   modelVersion   String
   rawProbability Float
-  outcome        Int      // 0 or 1
+  outcome        Int // 0 or 1
   sport          String
   gameId         String
   recordedAt     DateTime @default(now())
@@ -164,14 +166,14 @@ model AccuracySnapshot {
   computedAt         DateTime @default(now())
   periodStart        DateTime
   periodEnd          DateTime
-  sport              String?  // null = all sports
+  sport              String? // null = all sports
   league             String?
   totalGames         Int
   correctPredictions Int
   accuracy           Float
   brierScore         Float
   logLoss            Float
-  calibrationData    Json     // [{bucket, predicted, actual, count}]
+  calibrationData    Json // [{bucket, predicted, actual, count}]
 
   @@index([computedAt])
   @@index([sport])
@@ -214,7 +216,7 @@ model AuditLog {
 
 model SyncJob {
   id          String    @id @default(cuid())
-  type        String    // games | odds | injuries | predictions | validate
+  type        String // games | odds | injuries | predictions | validate
   sport       String?
   status      String    @default("pending")
   result      Json?
@@ -234,8 +236,8 @@ model GBDTSample {
   gameId    String?
   sport     String?
   features  Float[]
-  outcome   Int      // 0 or 1 (1 = home won)
-  source    String   @default("live")  // "live" | "backfill"
+  outcome   Int // 0 or 1 (1 = home won)
+  source    String   @default("live") // "live" | "backfill"
   createdAt DateTime @default(now())
 
   @@index([createdAt])
@@ -246,18 +248,18 @@ model GBDTSample {
 // ── Stored Predictions (for auto result matching) ─────────────────────────────
 
 model StoredPredictionRecord {
-  id                 String   @id @default(cuid())
-  gameId             String   @unique
+  id                 String    @id @default(cuid())
+  gameId             String    @unique
   sport              String
   modelName          String
   homeTeamName       String
   awayTeamName       String
-  gameDate           String   // YYYY-MM-DD
+  gameDate           String // YYYY-MM-DD
   homeWinProbability Float
   predictedHomeScore Int?
   predictedAwayScore Int?
   gbdtFeatures       Float[]
-  predictedAt        DateTime @default(now())
+  predictedAt        DateTime  @default(now())
   resolvedAt         DateTime?
 
   @@index([gameDate])
