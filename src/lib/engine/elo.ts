@@ -134,12 +134,21 @@ export class EloModel implements PredictionModel {
     const rawHomeWinProb  = this.expectedScore(adjustedHomeElo, awayElo);
 
     // Apply contextual modifiers (small adjustments within ±8 pp)
-    const restMod    = clamp((features.home.restFatigue - features.away.restFatigue) * 0.04, -0.04, 0.04);
-    const travelMod  = clamp(-features.away.travelFatigue * 0.05, -0.05, 0);
-    const injuryMod  = clamp((features.home.injuryImpact - features.away.injuryImpact) * 0.06, -0.06, 0.06);
-    const weatherMod = clamp((1 - features.environment.weatherScore) * -0.03, -0.03, 0); // bad weather hurts home less (familiarity)
+    const restMod       = clamp((features.home.restFatigue - features.away.restFatigue) * 0.04, -0.04, 0.04);
+    const travelMod     = clamp(-features.away.travelFatigue * 0.05, -0.05, 0);
+    const injuryMod     = clamp((features.home.injuryImpact - features.away.injuryImpact) * 0.06, -0.06, 0.06);
+    const weatherMod    = clamp((1 - features.environment.weatherScore) * -0.03, -0.03, 0);
+    // New contextual signals
+    const psychologyMod  = features.derived.psychologyMod   ?? 0;
+    const officiateMod   = features.derived.officiatingBias ?? 0;
+    const lateInjuryMod  = features.derived.lateInjuryDelta ?? 0;
+    const rosterMod      = features.derived.rosterMoveDelta  ?? 0;
 
-    const adjustedProb = clamp(rawHomeWinProb + restMod + travelMod + injuryMod + weatherMod, 0.05, 0.95);
+    const adjustedProb = clamp(
+      rawHomeWinProb + restMod + travelMod + injuryMod + weatherMod
+      + psychologyMod + officiateMod + lateInjuryMod + rosterMod,
+      0.05, 0.95,
+    );
 
     // Feature contributions for explainability
     const eloDiff    = homeElo - awayElo;
@@ -195,6 +204,46 @@ export class EloModel implements PredictionModel {
         contribution: injuryMod,
         probabilityDelta: injuryMod,
         direction: injuryMod > 0 ? 'positive' : 'negative',
+        percentageOfTotal: 0,
+      },
+      {
+        featureName: 'psychology_mod',
+        featureLabel: 'Rivalry / playoff psychology',
+        featureValue: psychologyMod,
+        weight: 1.0,
+        contribution: psychologyMod,
+        probabilityDelta: psychologyMod,
+        direction: psychologyMod >= 0 ? 'positive' : 'negative',
+        percentageOfTotal: 0,
+      },
+      {
+        featureName: 'officiating_bias',
+        featureLabel: 'Officiating home-call tendency',
+        featureValue: officiateMod,
+        weight: 1.0,
+        contribution: officiateMod,
+        probabilityDelta: officiateMod,
+        direction: 'positive',
+        percentageOfTotal: 0,
+      },
+      {
+        featureName: 'late_injury_delta',
+        featureLabel: 'Late warmup scratch impact',
+        featureValue: lateInjuryMod,
+        weight: 1.0,
+        contribution: lateInjuryMod,
+        probabilityDelta: lateInjuryMod,
+        direction: lateInjuryMod >= 0 ? 'positive' : 'negative',
+        percentageOfTotal: 0,
+      },
+      {
+        featureName: 'roster_move_delta',
+        featureLabel: '24-h roster move disruption',
+        featureValue: rosterMod,
+        weight: 1.0,
+        contribution: rosterMod,
+        probabilityDelta: rosterMod,
+        direction: rosterMod >= 0 ? 'positive' : 'negative',
         percentageOfTotal: 0,
       },
     ];

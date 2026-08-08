@@ -65,6 +65,8 @@ export async function getQuote(ticker: string): Promise<StockQuote | null> {
       eps:             n(q.epsTrailingTwelveMonths),
       forwardPE:       n(q.forwardPE),
       dividendYield:   sd?.dividendYield != null ? +(sd.dividendYield * 100).toFixed(2) : null,
+      ma50:            sd?.fiftyDayAverage != null ? +sd.fiftyDayAverage.toFixed(2) : null,
+      ma200:           sd?.twoHundredDayAverage != null ? +sd.twoHundredDayAverage.toFixed(2) : null,
       sector:          null,
       industry:        null,
       updatedAt:       new Date().toISOString(),
@@ -468,6 +470,159 @@ export async function searchStocks(query: string): Promise<{ ticker: string; nam
       exchange: q.exchange ?? '',
       type:     q.quoteType ?? 'EQUITY',
     }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Top Daily Picks ───────────────────────────────────────────────────────────
+//
+// Scores a curated universe of stocks using quote + key-stats data (one API
+// call per ticker). Returns the top N ranked by composite score so the finance
+// dashboard can surface a "Today's Best Opportunities" panel.
+
+export interface TopPickEntry {
+  ticker:      string;
+  name:        string;
+  price:       number;
+  changePct:   number;
+  marketCap:   number | null;
+  pe:          number | null;
+  forwardPE:   number | null;
+  week52High:  number;
+  week52Low:   number;
+  analystRating: string | null;
+  priceTarget:   number | null;
+  upsidePct:     number | null;
+  score:         number;        // 0-100 composite
+  rationale:     string;        // one-line reason for the pick
+  sector:        string;
+}
+
+// Diversified universe — large + mid caps across sectors
+const TOP_PICKS_UNIVERSE = [
+  'AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','JPM','V','UNH',
+  'HD','MA','PG','JNJ','ABBV','MRK','LLY','XOM','CVX','BAC',
+  'AVGO','COST','AMD','CRM','NOW','ADBE','ORCL','TMO','DHR','ISRG',
+  'NFLX','PYPL','UBER','ABNB','SQ','SNOW','ZS','CRWD','PANW','DDOG',
+  'WMT','TGT','KO','PEP','MCD','SBUX','NKE','DIS','CMCSA','VZ',
+];
+
+function computePickScore(q: any, ks: any): { score: number; rationale: string } {
+  let score = 50;
+  const reasons: string[] = [];
+
+  // 52-week position (momentum proxy)
+  const hi = q.fiftyTwoWeekHigh ?? 0;
+  const lo = q.fiftyTwoWeekLow  ?? 0;
+  const price = q.regularMarketPrice ?? 0;
+  if (hi > lo && price > 0) {
+    const pos = (price - lo) / (hi - lo);
+    // Prefer stocks not at extremes — buying near highs has momentum, but
+    // stocks at 60-85% of range are sweet spot (trending but not overbought)
+    if (pos >= 0.60 && pos <= 0.85) { score += 14; reasons.push('In buy zone of 52-wk range'); }
+    else if (pos >= 0.85)           { score += 6;  reasons.push('Near 52-wk high — strong trend'); }
+    else if (pos <= 0.25)           { score -= 10; reasons.push('Near 52-wk low — avoid for now'); }
+  }
+
+  // Valuation — forward PE vs trailing PE
+  const pe     = q.trailingPE  ?? ks?.trailingPE?.raw;
+  const fwdPE  = q.forwardPE   ?? ks?.forwardPE?.raw;
+  if (fwdPE != null && fwdPE > 0) {
+    if (fwdPE < 15)       { score += 18; reasons.push(`Cheap fwd P/E ${fwdPE.toFixed(0)}x`); }
+    else if (fwdPE < 25)  { score += 10; reasons.push(`Fair fwd P/E ${fwdPE.toFixed(0)}x`); }
+    else if (fwdPE < 40)  { score += 2;  }
+    else                  { score -= 8;  reasons.push(`High fwd P/E ${fwdPE.toFixed(0)}x`); }
+  }
+  if (pe != null && fwdPE != null && pe > 0 && fwdPE > 0) {
+    if (fwdPE < pe * 0.85) { score += 8; reasons.push('Earnings growth expected'); }
+  }
+
+  // Price momentum (day change)
+  const chgPct = q.regularMarketChangePercent ?? 0;
+  if (chgPct > 2)         { score += 6;  reasons.push(`Up ${chgPct.toFixed(1)}% today`); }
+  else if (chgPct < -3)   { score -= 6;  reasons.push(`Down ${Math.abs(chgPct).toFixed(1)}% today`); }
+
+  // Volume vs average
+  const vol    = q.regularMarketVolume   ?? 0;
+  const avgVol = q.averageDailyVolume3Month ?? q.averageDailyVolume10Day ?? 0;
+  if (avgVol > 0 && vol / avgVol > 1.4) { score += 5; reasons.push('Volume surge — institutional interest'); }
+
+  // Beta — moderate beta preferred
+  const beta = ks?.beta?.raw ?? q.beta;
+  if (beta != null) {
+    if (beta >= 0.8 && beta <= 1.5) score += 4;
+    else if (beta > 2.0)            score -= 4;
+  }
+
+  const rationale = reasons.slice(0, 2).join(' · ') || 'Quality large-cap pick';
+  return { score: Math.max(0, Math.min(100, Math.round(score))), rationale };
+}
+
+export async function getTopPicks(count = 8): Promise<TopPickEntry[]> {
+  try {
+    const results = await Promise.allSettled(
+      TOP_PICKS_UNIVERSE.map(async ticker => {
+        try {
+          const [q, summary] = await Promise.all([
+            (yahooFinance.quote as any)(ticker).catch(() => null),
+            (yahooFinance.quoteSummary as any)(ticker, {
+              modules: ['price', 'defaultKeyStatistics', 'recommendationTrend', 'financialData'],
+            }).catch(() => ({})),
+          ]);
+          if (!q) return null;
+
+          const ks   = (summary as any)?.defaultKeyStatistics ?? {};
+          const fd   = (summary as any)?.financialData ?? {};
+          const rt   = (summary as any)?.recommendationTrend?.trend?.[0];
+
+          const { score, rationale } = computePickScore(q, ks);
+
+          const currentPrice  = q.regularMarketPrice ?? 0;
+          const priceTarget   = n(fd.targetMeanPrice ?? fd.targetMedianPrice);
+          const upsidePct     = priceTarget != null && currentPrice > 0
+            ? +((priceTarget / currentPrice - 1) * 100).toFixed(1)
+            : null;
+
+          // Only boost score for meaningful upside (>10%)
+          let finalScore = score;
+          if (upsidePct != null && upsidePct > 15) finalScore = Math.min(100, finalScore + 8);
+          else if (upsidePct != null && upsidePct < 0) finalScore = Math.max(0, finalScore - 8);
+
+          const consensus = rt
+            ? ['Strong Sell','Sell','Hold','Buy','Strong Buy'][Math.round(Math.min(4, Math.max(0, rt.strongBuy > rt.buy ? 4 : rt.buy > rt.hold ? 3 : rt.hold > (rt.sell + rt.strongSell) ? 2 : 1)))]
+            : null;
+
+          const sector = (summary as any)?.price?.sector ?? q.sector ?? 'Equity';
+
+          return {
+            ticker,
+            name:          q.shortName ?? q.longName ?? ticker,
+            price:         currentPrice,
+            changePct:     +(q.regularMarketChangePercent ?? 0).toFixed(2),
+            marketCap:     n(q.marketCap),
+            pe:            n(q.trailingPE),
+            forwardPE:     n(q.forwardPE),
+            week52High:    q.fiftyTwoWeekHigh ?? 0,
+            week52Low:     q.fiftyTwoWeekLow  ?? 0,
+            analystRating: consensus,
+            priceTarget,
+            upsidePct,
+            score:         finalScore,
+            rationale,
+            sector,
+          } satisfies TopPickEntry;
+        } catch { return null; }
+      }),
+    );
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<TopPickEntry> =>
+        r.status === 'fulfilled' && r.value !== null,
+      )
+      .map(r => r.value)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, count);
   } catch {
     return [];
   }

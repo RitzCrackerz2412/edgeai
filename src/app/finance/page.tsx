@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { Activity, Scan, BarChart2, Newspaper } from 'lucide-react';
-import { getMarketOverview } from '@/lib/finance/providers/yahoo';
+import { getMarketOverview, getTopPicks } from '@/lib/finance/providers/yahoo';
 import { FinanceSearchBar } from '@/components/finance/FinanceSearchBar';
 import { LiveIndexStrip, LiveMovers, LiveSector } from '@/components/finance/LiveIndexStrip';
+import { DailyTopPicks } from '@/components/finance/DailyTopPicks';
 
 export const revalidate = 60;
 
@@ -28,7 +29,10 @@ const QUICK_NAV = [
 
 export default async function FinancePage() {
   // Server-side initial fetch — hydrates the live client components instantly
-  const overview = await getMarketOverview();
+  const [overview, initialPicks] = await Promise.all([
+    getMarketOverview(),
+    getTopPicks(8),
+  ]);
 
   return (
     <div className="space-y-6 max-w-screen-2xl">
@@ -105,6 +109,9 @@ export default async function FinancePage() {
         </div>
         <LiveSector initialSectors={overview.sectors} />
       </div>
+
+      {/* Daily top stock picks — scored and refreshed hourly */}
+      <DailyTopPicks initialPicks={initialPicks} />
 
       {/* Live market movers — refreshes every 60s */}
       <LiveMovers

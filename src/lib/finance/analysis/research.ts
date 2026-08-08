@@ -12,48 +12,67 @@ function lerp(v: number, lo: number, hi: number, outLo = 0, outHi = 100) {
 }
 
 // ── Financial Health Score ────────────────────────────────────────────────────
+//
+// Starts at 42 (below neutral). Positive contributions require genuinely
+// above-average metrics — prevents healthy-but-ordinary companies from
+// auto-scoring in "Buy" territory.
 
 function scoreFinancial(m: FinancialMetrics): ScoreBreakdown {
-  let score = 50;
+  let score = 42; // below neutral baseline — must earn additional points
   const details: string[] = [];
+  let dataPoints = 0;
 
   if (m.revenueGrowth != null) {
-    const pts = lerp(m.revenueGrowth, -20, 30, -15, 20);
+    dataPoints++;
+    // Typical S&P 500 revenue growth ~5-8%. Neutral at 5%, punish decline, reward >12%.
+    const pts = lerp(m.revenueGrowth, -15, 25, -18, 18);
     score += pts;
-    if (m.revenueGrowth > 15) details.push(`Revenue growing ${m.revenueGrowth.toFixed(1)}% YoY`);
+    if (m.revenueGrowth > 12) details.push(`Revenue growing ${m.revenueGrowth.toFixed(1)}% YoY`);
     else if (m.revenueGrowth < 0) details.push(`Revenue declining ${Math.abs(m.revenueGrowth).toFixed(1)}% YoY`);
     else details.push(`Revenue growth ${m.revenueGrowth.toFixed(1)}% YoY`);
   }
 
   if (m.grossMargin != null) {
-    const pts = lerp(m.grossMargin, 0, 80, -10, 15);
+    dataPoints++;
+    // Median gross margin is ~35%. Only above-average margins add meaningful points.
+    const pts = lerp(m.grossMargin, 5, 75, -8, 14);
     score += pts;
     details.push(`Gross margin ${m.grossMargin.toFixed(1)}%`);
   }
 
   if (m.freeCashFlow != null) {
-    const pts = m.freeCashFlow > 0 ? 8 : m.freeCashFlow > -1e8 ? -3 : -10;
+    dataPoints++;
+    const pts = m.freeCashFlow > 5e8 ? 10 : m.freeCashFlow > 0 ? 5 : m.freeCashFlow > -1e8 ? -5 : -12;
     score += pts;
     details.push(m.freeCashFlow > 0 ? 'Positive free cash flow' : 'Negative free cash flow');
   }
 
   if (m.debtToEquity != null) {
-    const pts = lerp(m.debtToEquity, 0, 300, 8, -12);
+    dataPoints++;
+    // Median D/E ~100%. Neutral at 100, significant penalty above 200.
+    const pts = lerp(m.debtToEquity, 0, 300, 10, -14);
     score += pts;
     if (m.debtToEquity > 150) details.push(`High D/E ratio of ${m.debtToEquity.toFixed(0)}%`);
     else if (m.debtToEquity < 50) details.push(`Low leverage (D/E ${m.debtToEquity.toFixed(0)}%)`);
   }
 
   if (m.profitMargin != null) {
-    const pts = lerp(m.profitMargin, -20, 30, -10, 15);
+    dataPoints++;
+    // S&P 500 median net margin ~11%. Neutral at 8%, meaningful add only above 15%.
+    const pts = lerp(m.profitMargin, -20, 30, -12, 14);
     score += pts;
     details.push(`Net margin ${m.profitMargin.toFixed(1)}%`);
   }
 
   if (m.returnOnEquity != null) {
-    const pts = lerp(m.returnOnEquity, -10, 40, -8, 12);
+    dataPoints++;
+    const pts = lerp(m.returnOnEquity, -5, 40, -8, 10);
     score += pts;
   }
+
+  // Penalize sparse data — fewer data points = lower confidence baseline
+  if (dataPoints === 0) score = 45;
+  else if (dataPoints <= 2) score -= 4;
 
   return {
     label:    'Financial Health',
@@ -121,7 +140,7 @@ function scoreValuation(m: FinancialMetrics, currentPrice: number): ScoreBreakdo
 // ── Momentum Score ────────────────────────────────────────────────────────────
 
 function scoreMomentum(history: PricePoint[], quote: { price: number; week52High: number; week52Low: number; volume: number; avgVolume: number }): ScoreBreakdown {
-  let score = 50;
+  let score = 44; // below-neutral baseline — momentum must be demonstrated, not assumed
   const details: string[] = [];
 
   if (history.length > 20) {
@@ -174,6 +193,12 @@ function scoreMomentum(history: PricePoint[], quote: { price: number; week52High
 }
 
 // ── Analyst Score ─────────────────────────────────────────────────────────────
+//
+// Key fix: real-world analyst ratings skew ~55-60% Buy for the average S&P 500
+// stock. Treating 55% buy as "neutral" (50) rather than lerping from 0→1
+// prevents systematic buy-rating inflation.
+
+const ANALYST_BUY_MARKET_AVG = 0.56; // historical S&P 500 average ~56% buy
 
 function scoreAnalyst(ratings: AnalystRatings): ScoreBreakdown {
   const details: string[] = [];
@@ -187,16 +212,28 @@ function scoreAnalyst(ratings: AnalystRatings): ScoreBreakdown {
   }
 
   const bullPct = (ratings.strongBuy + ratings.buy) / total;
-  let score     = lerp(bullPct, 0, 1, 20, 90);
+  // Normalize around the market average so a typical stock scores ~50.
+  // Range: 0% buy → ~20; 56% buy → 50; 90% buy → ~80
+  const deviation = (bullPct - ANALYST_BUY_MARKET_AVG) / (1 - ANALYST_BUY_MARKET_AVG);
+  let score = clamp(50 + deviation * 35, 15, 85);
+
+  // Strong Buy weighting bonus — a stock where most ratings are Strong Buy
+  // (not just Buy) is genuinely differentiated
+  const strongBuyPct = total > 0 ? ratings.strongBuy / total : 0;
+  if (strongBuyPct > 0.5) score += 8;
+  else if (strongBuyPct > 0.3) score += 4;
 
   details.push(`${ratings.numberOfAnalysts || total} analysts: ${ratings.strongBuy + ratings.buy} Buy, ${ratings.hold} Hold, ${ratings.sell + ratings.strongSell} Sell`);
   details.push(`Consensus: ${ratings.consensus}`);
 
   if (ratings.priceTargetUpside != null) {
-    const pts = lerp(ratings.priceTargetUpside, -20, 40, -15, 15);
+    // Price target upside is independent signal — but cap its contribution
+    // so it doesn't double-inflate already-bullish ratings
+    const pts = lerp(ratings.priceTargetUpside, -20, 40, -10, 12);
     score += pts;
     if (ratings.priceTargetUpside > 10) details.push(`Avg. price target implies ${ratings.priceTargetUpside.toFixed(1)}% upside`);
     else if (ratings.priceTargetUpside < -5) details.push(`Avg. price target implies ${Math.abs(ratings.priceTargetUpside).toFixed(1)}% downside`);
+    else details.push(`Price target ${ratings.priceTargetUpside > 0 ? '+' : ''}${ratings.priceTargetUpside.toFixed(1)}% from current price`);
   }
 
   return {
@@ -260,8 +297,8 @@ function buildNarratives(
   bullCase: string;
   bearCase: string;
 } {
-  const rating = compositeScore >= 72 ? 'strong buy' : compositeScore >= 60 ? 'buy'
-    : compositeScore >= 48 ? 'neutral' : compositeScore >= 36 ? 'cautious' : 'bearish';
+  const rating = compositeScore >= 76 ? 'strong buy' : compositeScore >= 64 ? 'buy'
+    : compositeScore >= 50 ? 'neutral' : compositeScore >= 38 ? 'cautious' : 'bearish';
 
   const executiveSummary = [
     `${name} (${ticker}) receives a ${rating} outlook with a composite score of ${compositeScore}/100.`,
@@ -416,17 +453,19 @@ export function generateResearch(input: {
 
   const scores: ResearchReport['scores'] = { financial, valuation, momentum, analyst: analystScore, insider: insiderScore };
 
+  // Tighter thresholds — the scoring changes above shift the typical stock to
+  // 48–58, so a genuine "Buy" requires meaningfully above-average signals.
   const rating: ResearchRating =
-    composite >= 72 ? 'Strong Buy' :
-    composite >= 60 ? 'Buy' :
-    composite >= 48 ? 'Neutral' :
-    composite >= 36 ? 'Sell' : 'Strong Sell';
+    composite >= 76 ? 'Strong Buy' :
+    composite >= 64 ? 'Buy' :
+    composite >= 50 ? 'Neutral' :
+    composite >= 38 ? 'Sell' : 'Strong Sell';
 
   const outlook: Outlook =
-    composite >= 72 ? 'Positive' :
-    composite >= 60 ? 'Cautious Positive' :
-    composite >= 48 ? 'Neutral' :
-    composite >= 36 ? 'Cautious Negative' : 'Negative';
+    composite >= 76 ? 'Positive' :
+    composite >= 64 ? 'Cautious Positive' :
+    composite >= 50 ? 'Neutral' :
+    composite >= 38 ? 'Cautious Negative' : 'Negative';
 
   const confidence = Math.round(
     (Math.abs(composite - 50) / 50) * 40 + 40 +

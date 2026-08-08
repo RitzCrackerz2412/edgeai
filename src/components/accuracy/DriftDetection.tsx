@@ -101,18 +101,42 @@ export function DriftDetection({ bySport }: Props) {
 
       {/* Sport status grid */}
       <div>
-        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
-          Per-sport drift status — rolling vs. all-time baseline
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+            Per-sport drift status — rolling vs. all-time baseline
+          </p>
+          {/* Threshold legend — always visible so users can read the scale */}
+          <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#22c55e' }} />
+              On Track (&lt;{DRIFT_WARN_THRESHOLD} pp)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#f59e0b' }} />
+              Caution ({DRIFT_WARN_THRESHOLD}–{DRIFT_ALERT_THRESHOLD} pp)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#ef4444' }} />
+              Alert ({DRIFT_ALERT_THRESHOLD}+ pp)
+            </span>
+          </div>
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {sportData.map(({ sport, baseline, rolling, delta, status }) => {
             const s = STATUS_STYLE[status];
             const Icon = status === 'alert' ? AlertTriangle : status === 'warning' ? AlertCircle : CheckCircle;
+            const deltaStr = `${delta > 0 ? '+' : ''}${delta.toFixed(1)} pp`;
+            const tooltip = status === 'ok'
+              ? `Within ${DRIFT_WARN_THRESHOLD} pp of baseline — no drift detected`
+              : status === 'warning'
+              ? `${deltaStr} from baseline — between ${DRIFT_WARN_THRESHOLD} and ${DRIFT_ALERT_THRESHOLD} pp below`
+              : `${deltaStr} from baseline — exceeds ${DRIFT_ALERT_THRESHOLD} pp alert threshold`;
             return (
               <div
                 key={sport}
-                className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2"
+                className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 relative group"
                 style={{ background: s.bg, border: `1px solid ${s.border}` }}
+                title={tooltip}
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -124,23 +148,31 @@ export function DriftDetection({ bySport }: Props) {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p
-                    className="text-sm font-black font-mono"
-                    style={{ color: s.color }}
-                  >
+                  <p className="text-sm font-black font-mono" style={{ color: s.color }}>
                     {delta > 0 ? '+' : ''}{delta.toFixed(1)}
                   </p>
-                  <p className="text-[9px] font-semibold uppercase" style={{ color: s.color }}>{s.label}</p>
+                  {/* Status label now includes "pp" to make the unit explicit */}
+                  <p className="text-[9px] font-semibold uppercase" style={{ color: s.color }}>
+                    {s.label}
+                  </p>
+                </div>
+                {/* Hover tooltip explaining scale */}
+                <div
+                  className="absolute bottom-full right-0 mb-1.5 w-56 rounded-lg px-3 py-2 text-xs leading-snug z-20 hidden group-hover:block pointer-events-none"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-secondary)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
+                >
+                  <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{sport} drift: {deltaStr}</p>
+                  <p>{tooltip}</p>
+                  <div className="mt-1.5 pt-1.5 space-y-0.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <p style={{ color: '#22c55e' }}>● On Track = within {DRIFT_WARN_THRESHOLD} pp</p>
+                    <p style={{ color: '#f59e0b' }}>● Caution = {DRIFT_WARN_THRESHOLD}–{DRIFT_ALERT_THRESHOLD} pp below</p>
+                    <p style={{ color: '#ef4444' }}>● Alert = {DRIFT_ALERT_THRESHOLD}+ pp below baseline</p>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
-        {(anyAlert || warnSports.length > 0) && (
-          <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
-            Alert threshold: &minus;{DRIFT_ALERT_THRESHOLD} pp · Warning: &minus;{DRIFT_WARN_THRESHOLD} pp
-          </p>
-        )}
       </div>
 
       {/* Rolling accuracy charts — one per sport in drift or warning */}

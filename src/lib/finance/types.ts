@@ -27,6 +27,8 @@ export interface StockQuote {
   eps:           number | null;
   forwardPE:     number | null;
   dividendYield: number | null;
+  ma50:          number | null;
+  ma200:         number | null;
   sector:        string | null;
   industry:      string | null;
   updatedAt:     string;

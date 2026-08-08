@@ -58,7 +58,7 @@ export const EXTENDED_HISTORY = [
   { id: 'h02', sport: 'NFL',    homeTeam: 'KC Chiefs',          awayTeam: 'Cincinnati Bengals', prediction: 'KC Chiefs',          actual: 'KC Chiefs',          correct: true,  confidence: 81, date: '2026-06-22', score: '28-21',  margin: 7  },
   { id: 'h03', sport: 'MLB',    homeTeam: 'NY Yankees',         awayTeam: 'Houston Astros',    prediction: 'NY Yankees',         actual: 'Houston Astros',     correct: false, confidence: 61, date: '2026-06-18', score: '3-4',   margin: -1 },
   { id: 'h04', sport: 'NHL',    homeTeam: 'Colorado Avalanche', awayTeam: 'Toronto Maple Leafs',prediction: 'Colorado Avalanche', actual: 'Colorado Avalanche', correct: true,  confidence: 76, date: '2026-06-20', score: '4-2',   margin: 2  },
-  { id: 'h05', sport: 'Soccer', homeTeam: 'Man City',           awayTeam: 'Brentford',         prediction: 'Manchester City',    actual: 'Manchester City',    correct: true,  confidence: 77, date: '2026-06-17', score: '3-1',   margin: 2  },
+  { id: 'h05', sport: 'Soccer', homeTeam: 'Manchester City',     awayTeam: 'Brentford',         prediction: 'Manchester City',    actual: 'Manchester City',    correct: true,  confidence: 77, date: '2026-06-17', score: '3-1',   margin: 2  },
   { id: 'h06', sport: 'NBA',    homeTeam: 'Boston Celtics',     awayTeam: 'Milwaukee Bucks',   prediction: 'Boston Celtics',     actual: 'Boston Celtics',     correct: true,  confidence: 83, date: '2026-06-22', score: '129-112', margin: 17},
   { id: 'h07', sport: 'NBA',    homeTeam: 'Boston Celtics',     awayTeam: 'Philadelphia 76ers',prediction: 'Boston Celtics',     actual: 'Boston Celtics',     correct: true,  confidence: 79, date: '2026-06-20', score: '118-114', margin: 4 },
   { id: 'h08', sport: 'NBA',    homeTeam: 'LA Lakers',          awayTeam: 'Orlando Magic',     prediction: 'LA Lakers',          actual: 'Orlando Magic',      correct: false, confidence: 58, date: '2026-06-14', score: '104-112', margin: -8},
@@ -76,11 +76,112 @@ export const EXTENDED_HISTORY = [
   { id: 'h19', sport: 'MLB',    homeTeam: 'NY Yankees',         awayTeam: 'Houston Astros',    prediction: 'NY Yankees',         actual: 'NY Yankees',         correct: true,  confidence: 63, date: '2026-05-19', score: '4-2',   margin: 2  },
   { id: 'h20', sport: 'UFC',    homeTeam: 'Israel Adesanya',    awayTeam: 'Alex Pereira',      prediction: 'Israel Adesanya',    actual: 'Alex Pereira',       correct: false, confidence: 51, date: '2026-05-15', score: 'KO R4', margin: 0  },
   { id: 'h21', sport: 'NHL',    homeTeam: 'Boston Bruins',      awayTeam: 'Toronto Maple Leafs',prediction: 'Boston Bruins',     actual: 'Toronto Maple Leafs',correct: false, confidence: 67, date: '2026-05-12', score: '2-3 OT', margin: -1},
-  { id: 'h22', sport: 'Soccer', homeTeam: 'Man City',           awayTeam: 'Arsenal',           prediction: 'Manchester City',    actual: 'Manchester City',    correct: true,  confidence: 71, date: '2026-05-10', score: '3-1',   margin: 2  },
+  { id: 'h22', sport: 'Soccer', homeTeam: 'Manchester City',     awayTeam: 'Arsenal',           prediction: 'Manchester City',    actual: 'Manchester City',    correct: true,  confidence: 71, date: '2026-05-10', score: '3-1',   margin: 2  },
   { id: 'h23', sport: 'NBA',    homeTeam: 'Boston Celtics',     awayTeam: 'Indiana Pacers',    prediction: 'Boston Celtics',     actual: 'Boston Celtics',     correct: true,  confidence: 86, date: '2026-05-08', score: '127-110', margin: 17},
   { id: 'h24', sport: 'NFL',    homeTeam: 'KC Chiefs',          awayTeam: 'Philadelphia Eagles',prediction: 'KC Chiefs',         actual: 'KC Chiefs',          correct: true,  confidence: 73, date: '2026-05-05', score: '24-17', margin: 7 },
   { id: 'h25', sport: 'MLB',    homeTeam: 'Houston Astros',     awayTeam: 'LA Dodgers',        prediction: 'LA Dodgers',         actual: 'Houston Astros',     correct: false, confidence: 64, date: '2026-05-02', score: '3-5',   margin: -2 },
 ];
+
+// ── Derived helpers ────────────────────────────────────────────────────────────
+
+const TEAM_COLORS: Record<string, string> = {
+  'Boston Celtics': '#007A33', 'NY Knicks': '#006BB6', 'Milwaukee Bucks': '#00471B',
+  'Philadelphia 76ers': '#006BB6', 'Indiana Pacers': '#002D62', 'LA Lakers': '#552583',
+  'Los Angeles Lakers': '#552583', 'Denver Nuggets': '#0E2240', 'Orlando Magic': '#0077C0',
+  'Golden State Warriors': '#1D428A', 'Phoenix Suns': '#1D1160', 'LA Clippers': '#1D428A',
+  'KC Chiefs': '#E31837', 'Kansas City Chiefs': '#E31837', 'Cincinnati Bengals': '#FB4F14',
+  'Denver Broncos': '#FB4F14', 'Las Vegas Raiders': '#A5ACAF', 'Buffalo Bills': '#00338D',
+  'NY Jets': '#125740', 'Philadelphia Eagles': '#004C54',
+  'NY Yankees': '#003087', 'New York Yankees': '#003087', 'Houston Astros': '#002D62',
+  'Baltimore Orioles': '#DF4601', 'LA Dodgers': '#005A9C',
+  'Colorado Avalanche': '#6F263D', 'Toronto Maple Leafs': '#00205B',
+  'Boston Bruins': '#FFB81C', 'Minnesota Wild': '#154734',
+  'Manchester City': '#6CABDD', 'Man City': '#6CABDD',
+  'Arsenal': '#EF0107', 'Liverpool': '#C8102E', 'Chelsea': '#034694', 'Brighton': '#0057B8',
+  'Jon Jones': '#dc2626', 'Ciryl Gane': '#6366f1',
+  'Israel Adesanya': '#dc2626', 'Alex Pereira': '#b45309',
+};
+
+const TEAM_ABBREVIATIONS: Record<string, string> = {
+  'Boston Celtics': 'BOS', 'NY Knicks': 'NYK', 'Milwaukee Bucks': 'MIL',
+  'Philadelphia 76ers': '76S', 'Indiana Pacers': 'IND', 'LA Lakers': 'LAL',
+  'Los Angeles Lakers': 'LAL', 'Denver Nuggets': 'DEN', 'Orlando Magic': 'ORL',
+  'Golden State Warriors': 'GSW', 'Phoenix Suns': 'PHX',
+  'KC Chiefs': 'KC', 'Kansas City Chiefs': 'KC', 'Cincinnati Bengals': 'CIN',
+  'Denver Broncos': 'DEN', 'Las Vegas Raiders': 'LVR', 'Buffalo Bills': 'BUF',
+  'NY Jets': 'NYJ', 'Philadelphia Eagles': 'PHI',
+  'NY Yankees': 'NYY', 'New York Yankees': 'NYY', 'Houston Astros': 'HOU',
+  'Baltimore Orioles': 'BAL', 'LA Dodgers': 'LAD',
+  'Colorado Avalanche': 'COL', 'Toronto Maple Leafs': 'TOR',
+  'Boston Bruins': 'BOS', 'Minnesota Wild': 'MIN',
+  'Manchester City': 'MCI', 'Man City': 'MCI',
+  'Arsenal': 'ARS', 'Liverpool': 'LIV', 'Chelsea': 'CHE', 'Brighton': 'BHA',
+};
+
+/** Last `count` resolved predictions from history, newest first. */
+export function getRecentPredictions(count = 7) {
+  return [...EXTENDED_HISTORY]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, count);
+}
+
+/** Teams with a 2+ win/loss streak derived from EXTENDED_HISTORY, hottest first. */
+export function getTrendingTeams(limit = 6): TrendingTeam[] {
+  const teamRecords: Record<string, { date: string; won: boolean; sport: string }[]> = {};
+
+  for (const game of EXTENDED_HISTORY) {
+    const entries = [
+      { name: game.homeTeam, won: game.actual === game.homeTeam, sport: game.sport },
+      { name: game.awayTeam, won: game.actual === game.awayTeam, sport: game.sport },
+    ];
+    for (const { name, won, sport } of entries) {
+      if (!teamRecords[name]) teamRecords[name] = [];
+      teamRecords[name].push({ date: game.date, won, sport });
+    }
+  }
+
+  const results: TrendingTeam[] = [];
+  for (const [teamName, records] of Object.entries(teamRecords)) {
+    const sorted = records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (sorted.length < 2) continue;
+
+    const latestWon = sorted[0].won;
+    let streak = 0;
+    for (const r of sorted) {
+      if (r.won === latestWon) streak++;
+      else break;
+    }
+    if (streak < 2) continue;
+
+    const direction: 'hot' | 'cold' = latestWon ? 'hot' : 'cold';
+    const sport = sorted[0].sport;
+    const abbr = TEAM_ABBREVIATIONS[teamName] ?? teamName.split(' ').slice(-1)[0].slice(0, 3).toUpperCase();
+    const color = TEAM_COLORS[teamName] ?? '#888888';
+    const winPct = sorted.filter(r => r.won).length / sorted.length;
+    const momentum = direction === 'hot'
+      ? Math.round(Math.min(50 + streak * 8 + winPct * 25, 99))
+      : Math.round(Math.max(50 - streak * 8 - (1 - winPct) * 25, 1));
+
+    results.push({
+      id: teamName.toLowerCase().replace(/\s+/g, '-'),
+      name: teamName,
+      abbreviation: abbr,
+      sport,
+      color,
+      direction,
+      streak: `${direction === 'hot' ? 'W' : 'L'}${streak}`,
+      momentum,
+      change: direction === 'hot' ? streak * 2 : -(streak * 2),
+    });
+  }
+
+  return results
+    .sort((a, b) => {
+      if (a.direction !== b.direction) return a.direction === 'hot' ? -1 : 1;
+      return b.momentum - a.momentum;
+    })
+    .slice(0, limit);
+}
 
 export const CONFIDENCE_DISTRIBUTION = [
   { tier: '50–59%', accuracy: 54.2, count: 1876, color: '#ef4444' },

@@ -7,7 +7,7 @@ import {
   Settings, ChevronLeft, ChevronRight, X, Zap, History,
   Activity, BrainCircuit, GitCompare, Trophy,
   Globe, Swords, CalendarDays, SlidersHorizontal,
-  TrendingUp, Scan, Newspaper, PieChart,
+  TrendingUp, Scan, Newspaper, PieChart, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ const ANALYSIS_NAV = [
   { href: '/compare/teams',    label: 'Compare',     Icon: GitCompare },
   { href: '/league/epl',       label: 'Leagues',     Icon: Globe },
   { href: '/tournament/worldcup2026', label: 'Tournaments', Icon: Trophy },
+  { href: '/methodology',      label: 'Methodology', Icon: BookOpen },
 ];
 
 const SPORTS_NAV = [

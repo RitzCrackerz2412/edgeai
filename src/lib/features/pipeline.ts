@@ -10,11 +10,12 @@
 
 import type { Game } from '../types';
 import type { DataProviders, RawInjury } from '../providers/types';
-import type { GameFeatureVector, DerivedFeatures, FeatureMeta } from './types';
+import type { GameFeatureVector, DerivedFeatures, FeatureMeta, GameContextSignals } from './types';
 import { extractTeamFeatures, type TeamContextInput } from './team';
 import { extractPlayerFeaturesFromInjury, aggregatePlayerImpact } from './player';
 import { extractEnvironmentFeatures, haversineKm } from './environment';
 import { clamp, minMax } from './normalize';
+import { computeGameContext } from './context';
 
 // ── Venue ID from game venue string ──────────────────────────────────────────
 
@@ -45,6 +46,7 @@ function computeDerived(
   homeForm: number, awayForm: number,
   homeInjury: number, awayInjury: number,
   homeRest: number, awayRest: number,
+  ctx?: GameContextSignals,
 ): DerivedFeatures {
   const eloDiff = homeElo - awayElo;
   return {
@@ -61,6 +63,10 @@ function computeDerived(
       (awayDef - homeDef) * 0.25,
       -1, 1,
     ),
+    psychologyMod:   ctx?.psychology.mod                 ?? 0,
+    officiatingBias: ctx?.officiating.bias               ?? 0,
+    lateInjuryDelta: ctx?.lateMoves.netHomeInjuryDelta   ?? 0,
+    rosterMoveDelta: ctx?.lateMoves.netHomeRosterDelta   ?? 0,
   };
 }
 
@@ -161,6 +167,8 @@ export function extractFeatures(game: Game): GameFeatureVector {
 
   const environment = extractEnvironmentFeatures({ venueId }, mockWeather);
 
+  const gameContext = computeGameContext(game, homeInjuries, awayInjuries);
+
   const derived = computeDerived(
     home.eloRating, away.eloRating,
     home.offensiveRating, away.offensiveRating,
@@ -168,6 +176,7 @@ export function extractFeatures(game: Game): GameFeatureVector {
     home.recentForm, away.recentForm,
     home.injuryImpact, away.injuryImpact,
     home.restDays, away.restDays,
+    gameContext,
   );
 
   return {
@@ -178,6 +187,7 @@ export function extractFeatures(game: Game): GameFeatureVector {
     awayPlayers,
     environment,
     derived,
+    gameContext,
   };
 }
 
@@ -226,6 +236,8 @@ export async function extractFeaturesLive(
 
     const environment = extractEnvironmentFeatures({ venueId }, weather);
 
+    const gameContext = computeGameContext(game, homeInjuries, awayInjuries);
+
     const derived = computeDerived(
       homeTeamFeatures.eloRating, awayTeamFeatures.eloRating,
       homeTeamFeatures.offensiveRating, awayTeamFeatures.offensiveRating,
@@ -233,6 +245,7 @@ export async function extractFeaturesLive(
       homeTeamFeatures.recentForm, awayTeamFeatures.recentForm,
       homeTeamFeatures.injuryImpact, awayTeamFeatures.injuryImpact,
       homeTeamFeatures.restDays, awayTeamFeatures.restDays,
+      gameContext,
     );
 
     return {
@@ -243,6 +256,7 @@ export async function extractFeaturesLive(
       awayPlayers: awayInjuries.map(extractPlayerFeaturesFromInjury),
       environment,
       derived,
+      gameContext,
     };
   } catch {
     // Fall back to mock-based features if live fetch fails

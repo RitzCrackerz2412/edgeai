@@ -87,6 +87,73 @@ export interface DerivedFeatures {
   offRatingDiff: number;      // (homeOff - awayOff) / 20 (normalized)
   defRatingDiff: number;      // (awayDef - homeDef) / 20 (positive = home better defense)
   overallStrengthDiff: number; // composite team strength difference, -1 to +1
+
+  // ── Contextual adjustments (all expressed as home-team win-prob delta) ──────
+  /** Rivalry intensity + revenge game + playoff pressure + primetime. ±0.03 */
+  psychologyMod: number;
+  /** Referee/official home-call bias for this sport/crew. Typically +0.005–+0.02 */
+  officiatingBias: number;
+  /** Late warmup scratches or day-of lineup changes. ±0.15 */
+  lateInjuryDelta: number;
+  /** Trade or signing within 24 h of tip-off — integration disruption. ±0.05 */
+  rosterMoveDelta: number;
+}
+
+// ── Psychology context ────────────────────────────────────────────────────────
+
+export interface PsychologyContext {
+  /** 0–1; 1 = well-documented divisional/historic rivalry */
+  rivalryIntensity: number;
+  /** 0–1; both teams fighting for playoff spots */
+  playoffPressure: number;
+  /** −1 to +1; positive = home team seeking revenge for recent lopsided loss */
+  revengeFactorHome: number;
+  /** true when nationally televised prime-time slot */
+  isPrimetime: boolean;
+  /** Combined probability delta for home team */
+  mod: number;
+}
+
+// ── Officiating context ───────────────────────────────────────────────────────
+
+export interface OfficiatingContext {
+  /** Known home-call bias for this sport (published research values) */
+  sportBaselineBias: number;
+  /** Crew-specific adjustment when referee IDs are available (0 = unknown) */
+  crewBias: number;
+  /** High-foul-tendency crews disadvantage teams that drive to the basket */
+  foulTendency: number;
+  /** Combined probability delta for home team */
+  bias: number;
+}
+
+// ── Late-breaking move signals ────────────────────────────────────────────────
+
+export interface LateMoveSignal {
+  /** True if any injury was reported < 2 h before scheduled tip-off */
+  hasWarmupScratch: boolean;
+  /** True if any roster move was reported < 24 h before tip-off */
+  hasLastMinuteMove: boolean;
+  /** Probability delta for home team from late home injuries (≤ 0) */
+  homeLateScratchDelta: number;
+  /** Probability delta for away team from late away injuries (≤ 0) */
+  awayLateScratchDelta: number;
+  /** Probability delta for home team from 24-h trade/signing disruption */
+  homeRosterMoveDelta: number;
+  /** Probability delta for away team from 24-h trade/signing disruption */
+  awayRosterMoveDelta: number;
+  /** Net home-team delta: awayPenalties − homePenalties */
+  netHomeInjuryDelta: number;
+  /** Net home-team delta from roster moves */
+  netHomeRosterDelta: number;
+}
+
+// ── Assembled context signals ─────────────────────────────────────────────────
+
+export interface GameContextSignals {
+  psychology: PsychologyContext;
+  officiating: OfficiatingContext;
+  lateMoves: LateMoveSignal;
 }
 
 // ── Feature metadata ─────────────────────────────────────────────────────────
@@ -109,4 +176,6 @@ export interface GameFeatureVector {
   awayPlayers: PlayerFeatureVector[];
   environment: EnvironmentFeatureVector;
   derived: DerivedFeatures;
+  /** Psychology, officiating, and late-move signals */
+  gameContext: GameContextSignals;
 }

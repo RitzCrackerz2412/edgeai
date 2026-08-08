@@ -31,9 +31,10 @@ function fearLabel(vix: number) {
   return               { label: 'Extreme Fear',   color: '#ef4444', pct: 10 };
 }
 
-const WATCHLIST = [
-  'AAPL','NVDA','MSFT','GOOGL','AMZN','META','TSLA','JPM',
+const DEFAULT_WATCHLIST = [
+  'DKNG','PENN','FUBO','DIS','NFLX','GOOGL','META','MSFT',
 ];
+const LS_KEY = 'edgeai_watchlist_v1';
 const INDEX_ORDER = ['^GSPC','^DJI','^IXIC','^RUT','^VIX'];
 const INDEX_LABELS: Record<string,string> = {
   '^GSPC':'S&P 500','^DJI':'Dow Jones','^IXIC':'Nasdaq','^RUT':'Russell 2000','^VIX':'VIX',
@@ -41,6 +42,20 @@ const INDEX_LABELS: Record<string,string> = {
 
 // ── types ─────────────────────────────────────────────────────────────────────
 interface WatchItem { ticker: string; quote: StockQuote | null }
+
+function maCrossoverSignal(q: StockQuote | null): { label: string; color: string } | null {
+  if (!q) return null;
+  const { ma50, ma200, price } = q;
+  if (ma50 != null && ma200 != null) {
+    if (ma50 > ma200 && price > ma50)  return { label: 'Buy',  color: '#22c55e' };
+    if (ma50 > ma200 && price <= ma50) return { label: 'Hold', color: '#f59e0b' };
+    if (ma50 <= ma200)                 return { label: 'Sell', color: '#ef4444' };
+  }
+  // fallback: use daily change when MA data unavailable
+  if (q.changePct >= 1)   return { label: 'Buy',  color: '#22c55e' };
+  if (q.changePct >= -0.5) return { label: 'Hold', color: 'var(--text-muted)' };
+  return { label: 'Sell', color: '#ef4444' };
+}
 
 interface LiveDashboardMarketProps {
   initialIndices:    IndexQuote[];
@@ -97,28 +112,74 @@ export function LiveDashboardMarket({
   initialIndices, initialMarketState, initialGainers, initialLosers,
   initialActives, initialSectors, initialWatchlist, initialNews,
 }: LiveDashboardMarketProps) {
-  const [indices,     setIndices]     = useState(initialIndices);
-  const [mktState,    setMktState]    = useState(initialMarketState);
-  const [gainers,     setGainers]     = useState(initialGainers);
-  const [losers,      setLosers]      = useState(initialLosers);
-  const [actives,     setActives]     = useState(initialActives);
-  const [sectors,     setSectors]     = useState(initialSectors);
-  const [watchlist,   setWatchlist]   = useState(initialWatchlist);
-  const [news,        setNews]        = useState(initialNews);
-  const [updatedAt,   setUpdatedAt]   = useState<Date | null>(null);
-  const [refreshing,  setRefreshing]  = useState(false);
+  const [indices,        setIndices]      = useState(initialIndices);
+  const [mktState,       setMktState]     = useState(initialMarketState);
+  const [gainers,        setGainers]      = useState(initialGainers);
+  const [losers,         setLosers]       = useState(initialLosers);
+  const [actives,        setActives]      = useState(initialActives);
+  const [sectors,        setSectors]      = useState(initialSectors);
+  const [watchlist,      setWatchlist]    = useState(initialWatchlist);
+  const [news,           setNews]         = useState(initialNews);
+  const [updatedAt,      setUpdatedAt]    = useState<Date | null>(null);
+  const [refreshing,     setRefreshing]   = useState(false);
+  const [wlTickers,      setWlTickers]    = useState<string[]>(DEFAULT_WATCHLIST);
+  const [addingTicker,   setAddingTicker] = useState(false);
+  const [newTicker,      setNewTicker]    = useState('');
   const tickRef = useRef(0);
 
-  const refresh = useCallback(async () => {
+  // Load custom watchlist from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as string[];
+        if (Array.isArray(parsed) && parsed.length > 0) setWlTickers(parsed);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const saveWlTickers = (tickers: string[]) => {
+    setWlTickers(tickers);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(tickers)); } catch { /* ignore */ }
+  };
+
+  const removeTicker = (ticker: string) => {
+    saveWlTickers(wlTickers.filter(t => t !== ticker));
+    setWatchlist(prev => prev.filter(w => w.ticker !== ticker));
+  };
+
+  const addTicker = async () => {
+    const t = newTicker.trim().toUpperCase();
+    if (!t || wlTickers.includes(t)) { setAddingTicker(false); setNewTicker(''); return; }
+    const updated = [...wlTickers, t];
+    saveWlTickers(updated);
+    setAddingTicker(false);
+    setNewTicker('');
+    // Fetch quote for new ticker
+    try {
+      const r = await fetch(`/api/finance/quotes?tickers=${t}`);
+      const d = await r.json();
+      if (d.ok && d.quotes?.[0]) {
+        setWatchlist(prev => [...prev, d.quotes[0]]);
+      } else {
+        setWatchlist(prev => [...prev, { ticker: t, quote: null }]);
+      }
+    } catch {
+      setWatchlist(prev => [...prev, { ticker: t, quote: null }]);
+    }
+  };
+
+  const refresh = useCallback(async (tickers?: string[]) => {
     setRefreshing(true);
     const tick = ++tickRef.current;
+    const wl = tickers ?? wlTickers;
     try {
       const [mktRes, quotesRes, newsRes] = await Promise.allSettled([
         fetch('/api/finance/markets').then(r => r.json()),
-        fetch(`/api/finance/quotes?tickers=${WATCHLIST.join(',')}`).then(r => r.json()),
+        fetch(`/api/finance/quotes?tickers=${wl.join(',')}`).then(r => r.json()),
         fetch('/api/finance/news/%5EGSPC?count=5').then(r => r.json()),
       ]);
-      if (tick !== tickRef.current) return; // stale
+      if (tick !== tickRef.current) return;
       if (mktRes.status === 'fulfilled' && mktRes.value.ok) {
         const ov = mktRes.value.overview;
         setIndices(ov.indices ?? []);
@@ -138,14 +199,15 @@ export function LiveDashboardMarket({
     } catch { /* silent */ } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [wlTickers]);
 
+  // On first mount, refresh with stored tickers (may differ from defaults before LS loads)
   useEffect(() => {
-    // Fetch immediately on mount if no initial data, then poll every 30s
-    if (initialWatchlist.length === 0 || initialNews.length === 0) refresh();
-    const id = setInterval(refresh, 30_000);
+    refresh();
+    const id = setInterval(() => refresh(), 30_000);
     return () => clearInterval(id);
-  }, [refresh, initialWatchlist.length, initialNews.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const vix    = indices.find(i => i.symbol === '^VIX');
   const fear   = vix ? fearLabel(vix.price) : null;
@@ -265,52 +327,85 @@ export function LiveDashboardMarket({
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderBottom: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Watchlist</span>
-            <Link href="/finance" style={{ fontSize: '0.5625rem', color: FC, textDecoration: 'none' }}>Research →</Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {addingTicker ? (
+                <form onSubmit={e => { e.preventDefault(); addTicker(); }} style={{ display: 'flex', gap: '0.25rem' }}>
+                  <input
+                    autoFocus
+                    value={newTicker}
+                    onChange={e => setNewTicker(e.target.value.toUpperCase())}
+                    placeholder="TICKER"
+                    maxLength={6}
+                    style={{
+                      width: 72, padding: '0.1rem 0.4rem', fontSize: '0.6875rem', fontWeight: 700,
+                      background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)',
+                      borderRadius: 4, color: 'var(--text-primary)', outline: 'none',
+                    }}
+                  />
+                  <button type="submit" style={{ fontSize: '0.5625rem', padding: '0.1rem 0.4rem', borderRadius: 3, background: FC, color: '#000', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Add</button>
+                  <button type="button" onClick={() => { setAddingTicker(false); setNewTicker(''); }} style={{ fontSize: '0.5625rem', padding: '0.1rem 0.4rem', borderRadius: 3, background: 'var(--bg-elevated)', color: 'var(--text-muted)', fontWeight: 700, border: '1px solid var(--border-default)', cursor: 'pointer' }}>✕</button>
+                </form>
+              ) : (
+                <button onClick={() => setAddingTicker(true)} style={{ fontSize: '0.5625rem', padding: '0.1rem 0.4rem', borderRadius: 3, background: 'var(--bg-elevated)', color: FC, fontWeight: 700, border: `1px solid ${FC}30`, cursor: 'pointer' }}>+ Add</button>
+              )}
+              <Link href="/finance" style={{ fontSize: '0.5625rem', color: FC, textDecoration: 'none' }}>Research →</Link>
+            </div>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                {['Symbol', 'Price', 'Change', 'Signal'].map(h => (
-                  <th key={h} style={{ padding: '0.3rem 0.75rem', fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', textAlign: h === 'Symbol' ? 'left' : 'right' }}>{h}</th>
+                {['Symbol', 'Price', 'Change', 'Signal', ''].map((h, idx) => (
+                  <th key={idx} style={{ padding: '0.3rem 0.75rem', fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', textAlign: h === 'Symbol' ? 'left' : 'right' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {watchlist.map(({ ticker, quote }) => {
-                const pos  = (quote?.changePct ?? 0) >= 0;
-                const sig  = !quote ? null
-                  : quote.changePct >= 2   ? { label: 'Strong Buy', color: '#22c55e' }
-                  : quote.changePct >= 0.5 ? { label: 'Buy',        color: '#4ade80' }
-                  : quote.changePct >= 0   ? { label: 'Hold',       color: 'var(--text-muted)' }
-                  : quote.changePct >= -1  ? { label: 'Watch',      color: '#f97316' }
-                  :                          { label: 'Sell',        color: '#ef4444' };
-                return (
-                  <tr key={ticker} style={{ borderBottom: '1px solid var(--border-subtle)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
+              {watchlist.length === 0
+                ? wlTickers.map(ticker => (
+                  <tr key={ticker} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '0.4rem 0.75rem' }}>
-                      <Link href={`/finance/${ticker}`} style={{ textDecoration: 'none' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: FC }}>{ticker}</div>
-                        <div style={{ fontSize: '0.5rem', color: 'var(--text-muted)', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quote?.name ?? ''}</div>
-                      </Link>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: FC }}>{ticker}</div>
                     </td>
-                    <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', fontFamily: 'var(--font-display)', fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-                      {quote ? `$${quote.price.toFixed(2)}` : '—'}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>
-                      {quote ? <ChgBadge v={quote.changePct} size="xs" /> : '—'}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>
-                      {sig && (
-                        <span style={{ fontSize: '0.5rem', fontWeight: 700, padding: '0.1rem 0.35rem', borderRadius: 2, color: sig.color, background: `${sig.color}15`, border: `1px solid ${sig.color}30` }}>
-                          {sig.label}
-                        </span>
-                      )}
+                    <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>—</td>
+                    <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>—</td>
+                    <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>—</td>
+                    <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}>
+                      <button onClick={() => removeTicker(ticker)} style={{ fontSize: '0.5rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>✕</button>
                     </td>
                   </tr>
-                );
-              })}
+                ))
+                : watchlist.map(({ ticker, quote }) => {
+                  const sig = maCrossoverSignal(quote);
+                  return (
+                    <tr key={ticker} style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '0.4rem 0.75rem' }}>
+                        <Link href={`/finance/${ticker}`} style={{ textDecoration: 'none' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: FC }}>{ticker}</div>
+                          <div style={{ fontSize: '0.5rem', color: 'var(--text-muted)', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quote?.name ?? ''}</div>
+                        </Link>
+                      </td>
+                      <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right', fontFamily: 'var(--font-display)', fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
+                        {quote ? `$${quote.price.toFixed(2)}` : '—'}
+                      </td>
+                      <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>
+                        {quote ? <ChgBadge v={quote.changePct} size="xs" /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>
+                        {sig ? (
+                          <span style={{ fontSize: '0.5rem', fontWeight: 700, padding: '0.1rem 0.35rem', borderRadius: 2, color: sig.color, background: `${sig.color}15`, border: `1px solid ${sig.color}30` }}>
+                            {sig.label}
+                          </span>
+                        ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}>
+                        <button onClick={() => removeTicker(ticker)} style={{ fontSize: '0.5rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }} title="Remove">✕</button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

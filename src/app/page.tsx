@@ -2,13 +2,13 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { getUpcomingGames, getAccuracyStats } from '@/lib/api';
-import { ACTIVITY_FEED, TRENDING_TEAMS } from '@/lib/dashboardData';
+import { getRecentPredictions, getTrendingTeams } from '@/lib/dashboardData';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { LiveDashboardMarket } from '@/components/finance/LiveDashboardMarket';
 import { getMarketOverview } from '@/lib/finance/providers/yahoo';
 import {
   ChevronRight, TrendingUp, Target, Zap, Brain,
-  Check, X, Flame, RefreshCw,
+  Check, X,
 } from 'lucide-react';
 
 
@@ -54,34 +54,14 @@ function MomentumBar({ value, direction }: { value: number; direction: 'hot' | '
   );
 }
 
-// Activity type → Lucide icon (no emoji)
-function ActivityIcon({ type }: { type: string }) {
-  const isGood = type === 'correct' || type === 'high_conf' || type === 'streak' || type === 'model';
-  const color = isGood ? '#22c55e' : '#ef4444';
-  const Icon =
-    type === 'correct'   ? Check :
-    type === 'wrong'     ? X :
-    type === 'upset'     ? Zap :
-    type === 'streak'    ? Flame :
-    type === 'high_conf' ? Target :
-    RefreshCw;
-  return (
-    <div style={{
-      width: 26, height: 26, borderRadius: 'var(--r-sm)', flexShrink: 0,
-      background: isGood ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
-      border: `1px solid ${isGood ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.12)'}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <Icon size={12} color={color} strokeWidth={2.5} />
-    </div>
-  );
-}
-
 export default async function HomePage() {
   const [[games, accuracy], overviewRes] = await Promise.all([
     Promise.all([getUpcomingGames(), getAccuracyStats()]),
     getMarketOverview().catch(() => null),
   ]);
+
+  const recentPredictions = getRecentPredictions(7);
+  const trendingTeams = getTrendingTeams(6);
 
   const marketOverview = overviewRes;
 
@@ -466,7 +446,7 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* Recent Activity — Lucide icons, no emoji */}
+          {/* Recent Predictions — real resolved history, newest first */}
           <section>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
               <span className="text-label">Recent Predictions</span>
@@ -481,33 +461,45 @@ export default async function HomePage() {
               background: 'var(--bg-card)', border: '1px solid var(--border-default)',
               borderRadius: 'var(--r-lg)', overflow: 'hidden',
             }}>
-              {ACTIVITY_FEED.slice(0, 7).map((item, i, arr) => (
-                <div key={item.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.625rem 1rem',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                }}>
-                  <ActivityIcon type={item.type} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.detail}
-                    </p>
-                    <p style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      {item.sport} · {timeAgo(item.timestamp)}
-                    </p>
-                  </div>
-                  {item.confidence && (
+              {recentPredictions.map((item, i, arr) => {
+                const correct = item.correct;
+                const resColor = correct ? '#22c55e' : '#ef4444';
+                const resBg = correct ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)';
+                return (
+                  <div key={item.id} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.625rem 1rem',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                  }}>
+                    {/* Correct / wrong indicator */}
+                    <div style={{
+                      width: 26, height: 26, borderRadius: 'var(--r-sm)', flexShrink: 0,
+                      background: resBg, border: `1px solid ${resColor}22`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {correct
+                        ? <Check size={12} color={resColor} strokeWidth={2.5} />
+                        : <X    size={12} color={resColor} strokeWidth={2.5} />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.homeTeam} vs {item.awayTeam}
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {item.score}</span>
+                      </p>
+                      <p style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {item.sport} · Picked {item.prediction} · {timeAgo(new Date(item.date).toISOString())}
+                      </p>
+                    </div>
                     <span style={{
                       fontFamily: 'var(--font-display)', fontSize: '0.875rem', fontWeight: 700,
                       padding: '0.125rem 0.4375rem', borderRadius: 3,
-                      background: item.type === 'correct' ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
-                      color: item.type === 'correct' ? '#22c55e' : item.type === 'wrong' ? '#ef4444' : 'var(--text-muted)',
+                      background: resBg, color: resColor,
                     }}>
                       {item.confidence}%
                     </span>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>
@@ -566,7 +558,7 @@ export default async function HomePage() {
               background: 'var(--bg-card)', border: '1px solid var(--border-default)',
               borderRadius: 'var(--r-lg)', overflow: 'hidden',
             }}>
-              {TRENDING_TEAMS.slice(0, 6).map((t, i, arr) => (
+              {trendingTeams.map((t, i, arr) => (
                 <div key={t.id} style={{
                   display: 'flex', alignItems: 'center', gap: '0.75rem',
                   padding: '0.625rem 1rem',

@@ -13,6 +13,12 @@ export function MarketMoverTable({ movers, title }: { movers: MarketMover[]; tit
   return (
     <div>
       <div className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>{title}</div>
+      {movers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-6 gap-1.5">
+          <div className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>No data available</div>
+          <div className="text-[10px]" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>Updates when markets open</div>
+        </div>
+      ) : null}
       <div className="space-y-1">
         {movers.slice(0, 8).map(m => {
           const pos = m.changePct >= 0;

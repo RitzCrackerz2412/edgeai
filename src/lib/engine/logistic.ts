@@ -33,12 +33,18 @@ export interface LogisticFeatures {
   travelPenalty: number;   // away team travel fatigue, 0 to 1
   sosDiff: number;         // strength of schedule diff, -1 to +1
   momentumDiff: number;    // momentum score diff, -1 to +1
+  // ── Contextual signals (not previously captured) ────────────────────────────
+  psychologyMod: number;   // rivalry/revenge/pressure/primetime composite, ±0.05
+  officiatingBias: number; // sport-level referee home-call bias, 0–0.04
+  lateInjuryDelta: number; // warmup scratches + day-of changes net home delta, ±0.20
+  rosterMoveDelta: number; // 24-h trade/signing cohesion disruption net home delta, ±0.05
 }
 
 const FEATURE_NAMES: (keyof LogisticFeatures)[] = [
   'eloDiffNorm', 'homeAdvantage', 'formDiff', 'restDiffNorm',
   'offRatingDiff', 'defRatingDiff', 'injuryAdvantage', 'travelPenalty',
   'sosDiff', 'momentumDiff',
+  'psychologyMod', 'officiatingBias', 'lateInjuryDelta', 'rosterMoveDelta',
 ];
 
 const FEATURE_LABELS: Record<keyof LogisticFeatures, string> = {
@@ -52,6 +58,10 @@ const FEATURE_LABELS: Record<keyof LogisticFeatures, string> = {
   travelPenalty:   'Away travel fatigue',
   sosDiff:         'Strength of schedule diff',
   momentumDiff:    'Momentum differential',
+  psychologyMod:   'Rivalry / playoff psychology',
+  officiatingBias: 'Officiating home-call tendency',
+  lateInjuryDelta: 'Late warmup scratch impact',
+  rosterMoveDelta: '24-h roster move disruption',
 };
 
 // ── Initial weights (bias at index 0, then one per feature) ──────────────────
@@ -61,16 +71,20 @@ const FEATURE_LABELS: Record<keyof LogisticFeatures, string> = {
 
 const INITIAL_WEIGHTS = new Float64Array([
   0.00,  // bias
-  1.50,  // eloDiffNorm   — strong single predictor
-  0.20,  // homeAdvantage — ~5% unconditional boost
-  0.60,  // formDiff      — hot/cold streaks matter
-  0.15,  // restDiffNorm  — rest advantage is real but small
-  0.40,  // offRatingDiff — offense and defense roughly equal
+  1.50,  // eloDiffNorm      — strong single predictor
+  0.20,  // homeAdvantage    — ~5% unconditional boost
+  0.60,  // formDiff         — hot/cold streaks matter
+  0.15,  // restDiffNorm     — rest advantage is real but small
+  0.40,  // offRatingDiff    — offense and defense roughly equal
   0.40,  // defRatingDiff
   0.35,  // injuryAdvantage
   0.25,  // travelPenalty
   0.10,  // sosDiff
   0.20,  // momentumDiff
+  0.80,  // psychologyMod    — rivalry/pressure amplifies performance variance
+  0.60,  // officiatingBias  — consistent but small; grows with crew data
+  1.20,  // lateInjuryDelta  — warmup scratches are highly market-moving
+  0.80,  // rosterMoveDelta  — cohesion drag from recent trades
 ]);
 
 // ── Training sample type ──────────────────────────────────────────────────────
@@ -130,6 +144,10 @@ export class LogisticRegressionModel implements PredictionModel {
       travelPenalty:   clamp(gfv.away.travelFatigue, 0, 1),
       sosDiff:         clamp(gfv.home.strengthOfSchedule - gfv.away.strengthOfSchedule, -1, 1),
       momentumDiff:    clamp(gfv.home.momentumScore - gfv.away.momentumScore, -1, 1),
+      psychologyMod:   gfv.derived.psychologyMod,
+      officiatingBias: gfv.derived.officiatingBias,
+      lateInjuryDelta: gfv.derived.lateInjuryDelta,
+      rosterMoveDelta: gfv.derived.rosterMoveDelta,
     };
   }
 

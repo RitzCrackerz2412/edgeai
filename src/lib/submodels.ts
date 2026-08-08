@@ -24,7 +24,12 @@ export interface SubModelResult {
   labelA: string;
   labelB: string;
   labelC: string;
-  /** Mean of the three scores */
+  /** Whether each H2H model has real data (false = defaulted to 50, excluded from ensemble) */
+  hasDataA: boolean;
+  hasDataC: boolean;
+  /** How many models contributed to ensembleAvg (max 3, min 1) */
+  activeModels: number;
+  /** Mean of models that have real data only */
   ensembleAvg: number;
   /** Std dev of the three scores — higher = more disagreement */
   disagreementPct: number;
@@ -52,38 +57,51 @@ export function computeSubModels(game: Game): SubModelResult {
 
   // ── Model A: recency (last 5 H2H meetings) ──────────────────────────────────
   const last5Total = headToHead.last5.home + headToHead.last5.away;
-  const rawA       = last5Total > 0 ? headToHead.last5.home / last5Total : 0.5;
+  const hasDataA   = last5Total > 0;
+  const rawA       = hasDataA ? headToHead.last5.home / last5Total : 0.5;
   const scoreA     = clamp(rawA * 100, 15, 85);
-  const labelA     = last5Total > 0
+  const labelA     = hasDataA
     ? `last 5 H2H: ${headToHead.last5.home}–${headToHead.last5.away}`
     : 'last 5 H2H: no data';
 
-  // ── Model B: season-long form via ELO ratings ────────────────────────────────
+  // ── Model B: season-long form via ELO ratings (always has data) ──────────────
   const rawB   = eloWinProb(homeTeam.eloRating, awayTeam.eloRating);
   const scoreB = clamp(rawB * 100, 5, 95);
   const labelB = `ELO ${homeTeam.eloRating} vs ${awayTeam.eloRating}`;
 
   // ── Model C: all-time H2H historical record ──────────────────────────────────
   const allTotal = headToHead.allTime.home + headToHead.allTime.away;
-  const rawC     = allTotal > 0 ? headToHead.allTime.home / allTotal : 0.5;
+  const hasDataC = allTotal > 0;
+  const rawC     = hasDataC ? headToHead.allTime.home / allTotal : 0.5;
   const scoreC   = clamp(rawC * 100, 10, 90);
-  const labelC   = allTotal > 0
+  const labelC   = hasDataC
     ? `all-time H2H: ${headToHead.allTime.home}–${headToHead.allTime.away}`
     : 'all-time H2H: no data';
 
-  const scores         = [scoreA, scoreB, scoreC];
-  const ensembleAvg    = scores.reduce((s, v) => s + v, 0) / 3;
-  const disagreementPct = stdDev(scores);
+  // ── Ensemble: only average models that have real data ───────────────────────
+  // Model B (ELO) always contributes. A and C only contribute when H2H data exists.
+  const activeScores: number[] = [scoreB];
+  if (hasDataA) activeScores.push(scoreA);
+  if (hasDataC) activeScores.push(scoreC);
+
+  const activeModels   = activeScores.length;
+  const ensembleAvg    = activeScores.reduce((s, v) => s + v, 0) / activeModels;
+
+  // Disagreement still computed across all three scores so it reflects true spread
+  const disagreementPct = stdDev([scoreA, scoreB, scoreC]);
 
   return {
-    scoreA:           +scoreA.toFixed(1),
-    scoreB:           +scoreB.toFixed(1),
-    scoreC:           +scoreC.toFixed(1),
+    scoreA:          +scoreA.toFixed(1),
+    scoreB:          +scoreB.toFixed(1),
+    scoreC:          +scoreC.toFixed(1),
     labelA,
     labelB,
     labelC,
-    ensembleAvg:      +ensembleAvg.toFixed(1),
-    disagreementPct:  +disagreementPct.toFixed(1),
-    highUncertainty:  disagreementPct > DISAGREEMENT_THRESHOLD,
+    hasDataA,
+    hasDataC,
+    activeModels,
+    ensembleAvg:     +ensembleAvg.toFixed(1),
+    disagreementPct: +disagreementPct.toFixed(1),
+    highUncertainty: disagreementPct > DISAGREEMENT_THRESHOLD,
   };
 }
