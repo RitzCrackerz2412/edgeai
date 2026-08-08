@@ -186,14 +186,65 @@ export class ESPNProvider implements SportsDataProvider {
     });
   }
 
-  // ESPN's public API doesn't expose team stats or injuries in a structured format.
-  // Fall through to SportsDataIO for these endpoints.
+  // ── Team stats ──────────────────────────────────────────────────────────────
+  //
+  // Fetches from ESPN's undocumented team stats endpoint.
+  // teamId must be ESPN's numeric ID (e.g. "2" for Celtics).
+  // Returns null for non-numeric IDs (our internal slugs) so the caller
+  // can fall through to SportsDataIO or use static data.
 
-  async getTeamStats(_teamId: string, _season?: string): Promise<RawTeamStats | null> {
+  async getTeamStats(teamId: string, _season?: string): Promise<RawTeamStats | null> {
+    if (!/^\d+$/.test(teamId)) return null; // not an ESPN numeric ID
+
+    // Determine sport/league path from context — try all major leagues
+    const paths = [
+      'basketball/nba', 'football/nfl', 'baseball/mlb',
+      'hockey/nhl', 'football/college-football', 'basketball/mens-college-basketball',
+    ];
+
+    for (const path of paths) {
+      try {
+        const data = await apiFetch<ESPNTeamStatsResponse>(
+          `${BASE}/${path}/teams/${teamId}/statistics`,
+          { rateLimitKey: `espn-stats-${teamId}`, timeoutMs: 6_000, retries: 1, next: { revalidate: 300 } },
+        );
+        if (!data) continue;
+        const stats = parseTeamStats(data, teamId);
+        if (stats) return stats;
+      } catch {
+        continue;
+      }
+    }
     return null;
   }
 
-  async getInjuries(_teamId: string): Promise<RawInjury[]> {
+  // ── Injuries ─────────────────────────────────────────────────────────────────
+  //
+  // Fetches league-wide injuries and filters to the requested team.
+  // teamId can be ESPN numeric or a team name fragment for fuzzy filtering.
+
+  async getInjuries(teamId: string): Promise<RawInjury[]> {
+    const sportPaths = [
+      { sport: 'NBA', path: 'basketball/nba' },
+      { sport: 'NFL', path: 'football/nfl' },
+      { sport: 'MLB', path: 'baseball/mlb' },
+      { sport: 'NHL', path: 'hockey/nhl' },
+    ];
+
+    for (const { path } of sportPaths) {
+      try {
+        const data = await apiFetch<ESPNInjuryResponse>(
+          `${BASE}/${path}/injuries`,
+          { rateLimitKey: `espn-injuries-${path}`, timeoutMs: 6_000, retries: 1, next: { revalidate: 180 } },
+        );
+        if (!data?.injuries?.length) continue;
+
+        const injuries = parseInjuries(data.injuries, teamId);
+        if (injuries.length > 0) return injuries;
+      } catch {
+        continue;
+      }
+    }
     return [];
   }
 
@@ -204,4 +255,148 @@ export class ESPNProvider implements SportsDataProvider {
   async getVenue(_venueId: string): Promise<RawVenue | null> {
     return null;
   }
+}
+
+// ── ESPN response shapes ──────────────────────────────────────────────────────
+
+interface ESPNStatValue {
+  name: string;
+  displayName?: string;
+  shortDisplayName?: string;
+  value: number;
+}
+
+interface ESPNStatCategory {
+  name?: string;
+  displayName?: string;
+  stats: ESPNStatValue[];
+}
+
+interface ESPNTeamStatsResponse {
+  team?: { id: string; displayName: string; abbreviation?: string };
+  results?: ESPNStatCategory[];
+  statistics?: ESPNStatValue[];
+}
+
+interface ESPNInjuryAthlete {
+  id: string;
+  displayName: string;
+  position?: { abbreviation: string };
+}
+
+interface ESPNInjuryTeam {
+  id: string;
+  displayName: string;
+  abbreviation?: string;
+}
+
+interface ESPNInjuryEntry {
+  athlete?: ESPNInjuryAthlete;
+  team?: ESPNInjuryTeam;
+  status?: string;
+  shortComment?: string;
+  details?: { type?: string; detail?: string; side?: string };
+}
+
+interface ESPNInjuryResponse {
+  injuries?: ESPNInjuryEntry[];
+}
+
+// ── Parsers ───────────────────────────────────────────────────────────────────
+
+function findStat(stats: ESPNStatValue[], ...names: string[]): number | undefined {
+  for (const name of names) {
+    const s = stats.find(s => s.name === name || s.displayName === name || s.shortDisplayName === name);
+    if (s !== undefined) return s.value;
+  }
+  return undefined;
+}
+
+function parseTeamStats(data: ESPNTeamStatsResponse, teamId: string): RawTeamStats | null {
+  // Flatten all stats from categories or top-level array
+  const allStats: ESPNStatValue[] = [];
+  if (data.results) {
+    for (const cat of data.results) allStats.push(...(cat.stats ?? []));
+  } else if (data.statistics) {
+    allStats.push(...data.statistics);
+  }
+  if (allStats.length === 0) return null;
+
+  const wins    = findStat(allStats, 'wins', 'Wins', 'W') ?? 0;
+  const losses  = findStat(allStats, 'losses', 'Losses', 'L') ?? 0;
+  const draws   = findStat(allStats, 'ties', 'draws', 'Draws', 'D') ?? 0;
+  const gp      = wins + losses + draws || 1;
+  const ppg     = findStat(allStats, 'avgPoints', 'pointsPerGame', 'PPG') ?? 0;
+  const papg    = findStat(allStats, 'avgPointsAllowed', 'oppPointsPerGame', 'PAPG') ?? 0;
+  const offRtg  = findStat(allStats, 'offensiveRating', 'offRating', 'ORtg') ?? ppg;
+  const defRtg  = findStat(allStats, 'defensiveRating', 'defRating', 'DRtg') ?? papg;
+
+  return {
+    teamId,
+    teamName:            data.team?.displayName ?? '',
+    season:              new Date().getFullYear().toString(),
+    league:              '',
+    gamesPlayed:         gp,
+    wins,
+    losses,
+    draws,
+    winPct:              wins / gp,
+    pointsPerGame:       ppg,
+    pointsAllowedPerGame: papg,
+    netRating:           offRtg - defRtg,
+    offensiveRating:     offRtg,
+    defensiveRating:     defRtg,
+    homeWins:            findStat(allStats, 'homeWins', 'HW') ?? 0,
+    homeLosses:          findStat(allStats, 'homeLosses', 'HL') ?? 0,
+    awayWins:            findStat(allStats, 'awayWins', 'AW') ?? 0,
+    awayLosses:          findStat(allStats, 'awayLosses', 'AL') ?? 0,
+    last10:              [],
+    extras:              Object.fromEntries(allStats.map(s => [s.name, s.value])),
+  };
+}
+
+function parseInjuries(entries: ESPNInjuryEntry[], teamId: string): RawInjury[] {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const nid = normalize(teamId);
+
+  return entries
+    .filter(e => {
+      if (!e.team || !e.athlete) return false;
+      // Filter by ESPN numeric team ID or fuzzy team name match
+      if (/^\d+$/.test(teamId)) return e.team.id === teamId;
+      return normalize(e.team.displayName).includes(nid) ||
+             normalize(e.team.abbreviation ?? '').includes(nid) ||
+             nid.includes(normalize(e.team.displayName));
+    })
+    .map(e => ({
+      playerId:    e.athlete!.id,
+      playerName:  e.athlete!.displayName,
+      teamId:      e.team!.id,
+      position:    e.athlete!.position?.abbreviation ?? '',
+      status:      mapInjuryStatus(e.status ?? ''),
+      description: e.shortComment ?? e.details?.detail ?? '',
+      impactLevel: mapImpactLevel(e.status ?? '', e.athlete!.position?.abbreviation ?? ''),
+      updatedAt:   new Date().toISOString(),
+    }));
+}
+
+function mapInjuryStatus(raw: string): RawInjury['status'] {
+  const s = raw.toLowerCase();
+  if (s.includes('out') || s.includes('inactive')) return 'out';
+  if (s.includes('doubtful'))                        return 'doubtful';
+  if (s.includes('questionable'))                    return 'questionable';
+  if (s.includes('day') || s.includes('dtd'))        return 'day-to-day';
+  if (s.includes('ir') || s.includes('reserve'))     return 'ir';
+  return 'questionable';
+}
+
+function mapImpactLevel(status: string, position: string): RawInjury['impactLevel'] {
+  const s = status.toLowerCase();
+  if (s.includes('out') || s.includes('ir'))  return 'Critical';
+  if (s.includes('doubtful'))                 return 'High';
+  // Stars and key positions hurt more
+  const starPositions = ['QB', 'PG', 'SG', 'CF', 'C', 'RB'];
+  if (s.includes('questionable') && starPositions.includes(position)) return 'High';
+  if (s.includes('questionable'))             return 'Medium';
+  return 'Low';
 }

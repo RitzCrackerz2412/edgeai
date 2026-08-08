@@ -226,3 +226,40 @@ model SyncJob {
   @@index([type, status])
   @@index([createdAt])
 }
+
+// ── GBDT Training Data ────────────────────────────────────────────────────────
+
+model GBDTSample {
+  id        String   @id @default(cuid())
+  gameId    String?
+  sport     String?
+  features  Float[]
+  outcome   Int      // 0 or 1 (1 = home won)
+  source    String   @default("live")  // "live" | "backfill"
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([sport])
+  @@index([source])
+}
+
+// ── Stored Predictions (for auto result matching) ─────────────────────────────
+
+model StoredPredictionRecord {
+  id                 String   @id @default(cuid())
+  gameId             String   @unique
+  sport              String
+  modelName          String
+  homeTeamName       String
+  awayTeamName       String
+  gameDate           String   // YYYY-MM-DD
+  homeWinProbability Float
+  predictedHomeScore Int?
+  predictedAwayScore Int?
+  gbdtFeatures       Float[]
+  predictedAt        DateTime @default(now())
+  resolvedAt         DateTime?
+
+  @@index([gameDate])
+  @@index([sport, gameDate])
+}

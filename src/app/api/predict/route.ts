@@ -14,6 +14,7 @@ import { getGameById } from '@/lib/api';
 import { runPrediction, toPrediction } from '@/lib/engine';
 import { getCache, cacheKey, TTL } from '@/lib/cache';
 import { dataLogger } from '@/lib/validation/logger';
+import { storePrediction } from '@/lib/engine/predictionStore';
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,6 +71,22 @@ export async function POST(req: NextRequest) {
 
     // Cache for 10 minutes
     await cache.set(key, responseData, TTL.PREDICTION).catch(() => {});
+
+    // Store prediction for auto result-matching by the cron poller
+    const gameDate = game.date ?? new Date().toISOString().slice(0, 10);
+    storePrediction({
+      gameId:             gameId,
+      sport:              game.sport,
+      modelName:          output.ensemble.modelName,
+      homeTeamName:       game.homeTeam.name,
+      awayTeamName:       game.awayTeam.name,
+      gameDate,
+      homeWinProbability: output.ensemble.homeWinProbability,
+      predictedHomeScore: prediction.predictedScore.home,
+      predictedAwayScore: prediction.predictedScore.away,
+      gbdtFeatures:       output.gbdtFeatures,
+      predictedAt:        output.ensemble.computedAt,
+    }).catch(() => {});
 
     return NextResponse.json(responseData);
   } catch (err) {

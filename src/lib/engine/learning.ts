@@ -24,20 +24,54 @@ import {
 import { weightStore } from './weights';
 import type { ValidationRecord } from './types';
 import { gbdtModel, type GBDTTrainingSample } from './gbdt';
+import { persistGBDTSample, loadGBDTSamplesFromDb } from '../db/gbdtSamples';
 
 // ── GBDT training sample store ────────────────────────────────────────────────
 //
-// Stores (features, outcome) pairs collected from resolved games.
-// These accumulate in memory; replace with DB persistence for production.
+// In-memory buffer. On first use, loads persisted samples from the DB so
+// the model survives server restarts. New samples are written to both the
+// buffer and the DB (when DATABASE_URL is set).
 
 const gbdtSamples: GBDTTrainingSample[] = [];
+let dbBootstrapped = false;
+
+async function ensureBootstrapped(): Promise<void> {
+  if (dbBootstrapped) return;
+  dbBootstrapped = true;
+  const persisted = await loadGBDTSamplesFromDb();
+  if (persisted.length > 0) {
+    gbdtSamples.push(...persisted);
+    // Fit model immediately if enough samples already exist
+    if (gbdtSamples.length >= 30) {
+      gbdtModel.fit(gbdtSamples);
+    }
+  }
+}
+
+// Bootstrap on module load (fire-and-forget; fine on serverless cold start)
+ensureBootstrapped().catch(() => {});
 
 /**
  * Add a (features, outcome) pair to the GBDT training store.
  * Called from processPostGame whenever gbdtFeatures were saved at prediction time.
  */
-export function addGBDTSample(features: number[], homeWon: boolean): void {
-  gbdtSamples.push({ features, outcome: homeWon ? 1 : 0 });
+export function addGBDTSample(
+  features: number[],
+  homeWon: boolean,
+  gameId?: string,
+  sport?: string,
+): void {
+  const outcome: 0 | 1 = homeWon ? 1 : 0;
+  gbdtSamples.push({ features, outcome });
+  persistGBDTSample(features, outcome, gameId, sport, 'live').catch(() => {});
+}
+
+/**
+ * Seed samples directly (used by the backfill pipeline).
+ * Skips DB write since backfill inserts directly via persistGBDTSample.
+ */
+export function seedGBDTSample(features: number[], outcome: 0 | 1): void {
+  gbdtSamples.push({ features, outcome });
 }
 
 /**
@@ -180,7 +214,7 @@ export function processPostGame(data: PostGameData): LearningResult {
 
     // Feed GBDT training sample if feature vector was captured at prediction time
     if (data.storedPrediction.gbdtFeatures) {
-      addGBDTSample(data.storedPrediction.gbdtFeatures, outcome === 1);
+      addGBDTSample(data.storedPrediction.gbdtFeatures, outcome === 1, data.gameId, data.sport);
     }
 
     // 3. Update dynamic model weights with Brier contribution
