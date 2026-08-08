@@ -31,6 +31,8 @@ export interface StoredPrediction {
   predictedHomeScore?: number;
   predictedAwayScore?: number;
   predictedAt: string;
+  /** GBDT feature vector captured at prediction time — enables future retraining. */
+  gbdtFeatures?: number[];
 }
 
 // ── Validation computation ────────────────────────────────────────────────────

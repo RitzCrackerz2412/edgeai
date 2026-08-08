@@ -21,6 +21,19 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface FeatureImportance {
+  name: string;
+  label: string;
+  importance: number;
+}
+
+interface ModelFeaturesData {
+  modelType: string;
+  trained: boolean;
+  trainingSamples: number;
+  features: FeatureImportance[];
+}
+
 interface BucketData {
   label: string;
   predicted: number;
@@ -83,20 +96,24 @@ function MetricCard({
 export default function ModelDashboard() {
   const [backtest, setBacktest] = useState<BacktestResult | null>(null);
   const [learning, setLearning] = useState<LearningStatus | null>(null);
+  const [modelFeatures, setModelFeatures] = useState<ModelFeaturesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [btRes, lRes] = await Promise.all([
+        const [btRes, lRes, mfRes] = await Promise.all([
           fetch('/api/backtest'),
           fetch('/api/learn'),
+          fetch('/api/model/features'),
         ]);
         const btData = await btRes.json();
         if (btData.result) setBacktest(btData.result);
         const lData = lRes.ok ? await lRes.json() : null;
         if (lData?.status) setLearning(lData.status);
+        const mfData = mfRes.ok ? await mfRes.json() : null;
+        if (mfData) setModelFeatures(mfData);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load');
       } finally {
@@ -231,6 +248,61 @@ export default function ModelDashboard() {
         <section className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 text-center">
           <p className="text-slate-400">No validation records yet.</p>
           <p className="text-slate-500 text-sm mt-1">Submit game results via <code className="text-blue-400">POST /api/validate</code> to see performance metrics.</p>
+        </section>
+      )}
+
+      {/* ── GBDT Feature Importance ───────────────────────────────────────── */}
+      {modelFeatures && (
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-semibold">GBDT Feature Importance</h2>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
+              modelFeatures.trained
+                ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700'
+                : 'bg-amber-900/50 text-amber-400 border border-amber-700'
+            }`}>
+              {modelFeatures.trained
+                ? `Trained · ${modelFeatures.trainingSamples} samples`
+                : `Cold-start · ${modelFeatures.trainingSamples}/30 samples (LR proxy weights)`}
+            </span>
+            <span className="text-xs text-slate-500">
+              MODEL_TYPE={modelFeatures.modelType}
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">
+            Relative contribution of each feature to split gain across all {modelFeatures.trained ? 'fitted' : 'initialised'} trees.
+            {!modelFeatures.trained && ' Showing logistic-regression proxy weights until ≥30 resolved games accumulate.'}
+          </p>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={modelFeatures.features.map(f => ({
+                  label: f.label,
+                  importance: parseFloat((f.importance * 100).toFixed(1)),
+                }))}
+                layout="vertical"
+                margin={{ top: 4, right: 32, bottom: 4, left: 160 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                <XAxis
+                  type="number"
+                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  tick={{ fill: '#cbd5e1', fontSize: 11 }}
+                  width={155}
+                />
+                <Tooltip
+                  contentStyle={{ background: '#1e293b', border: '1px solid #475569', borderRadius: 8 }}
+                  formatter={(v: unknown) => [`${v}%`, 'Importance']}
+                />
+                <Bar dataKey="importance" fill="#6366f1" radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </section>
       )}
 

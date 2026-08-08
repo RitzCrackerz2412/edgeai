@@ -57,6 +57,7 @@ export interface ValidationRecord {
   confidenceError: number;          // |predictedConfidence - actualCorrect*100|
   predictedAt: string;
   validatedAt: string;
+  gbdtFeatures?: number[];
 }
 
 // ── Model interface ───────────────────────────────────────────────────────────

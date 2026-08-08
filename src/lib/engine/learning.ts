@@ -23,6 +23,30 @@ import {
 } from './calibration';
 import { weightStore } from './weights';
 import type { ValidationRecord } from './types';
+import { gbdtModel, type GBDTTrainingSample } from './gbdt';
+
+// ── GBDT training sample store ────────────────────────────────────────────────
+//
+// Stores (features, outcome) pairs collected from resolved games.
+// These accumulate in memory; replace with DB persistence for production.
+
+const gbdtSamples: GBDTTrainingSample[] = [];
+
+/**
+ * Add a (features, outcome) pair to the GBDT training store.
+ * Called from processPostGame whenever gbdtFeatures were saved at prediction time.
+ */
+export function addGBDTSample(features: number[], homeWon: boolean): void {
+  gbdtSamples.push({ features, outcome: homeWon ? 1 : 0 });
+}
+
+/**
+ * Return all accumulated GBDT training samples.
+ * Used by the /admin/model page to show training data size.
+ */
+export function getGBDTSamples(): GBDTTrainingSample[] {
+  return [...gbdtSamples];
+}
 
 // ── Model version archive ─────────────────────────────────────────────────────
 
@@ -81,9 +105,7 @@ function shouldRetrain(): boolean {
 }
 
 /**
- * Performs a lightweight recalibration pass on all calibrators.
- * Full logistic regression retraining would happen here when more
- * training data infrastructure is in place.
+ * Recalibration pass on all calibrators + GBDT refit when enough data exists.
  */
 function retrain(sport?: Sport): void {
   const allSamples = calibrationStore.all();
@@ -91,6 +113,11 @@ function retrain(sport?: Sport): void {
     eloCalibrator.fit(allSamples);
     logisticCalibrator.fit(allSamples);
     ensembleCalibrator.fit(allSamples);
+  }
+
+  // Refit GBDT on all accumulated (features, outcome) pairs
+  if (gbdtSamples.length >= 30) {
+    gbdtModel.fit(gbdtSamples);
   }
 
   modelVersionStore.archive(
@@ -150,6 +177,11 @@ export function processPostGame(data: PostGameData): LearningResult {
     });
     calibrationSampleAdded = true;
     samplesSinceRetrain++;
+
+    // Feed GBDT training sample if feature vector was captured at prediction time
+    if (data.storedPrediction.gbdtFeatures) {
+      addGBDTSample(data.storedPrediction.gbdtFeatures, outcome === 1);
+    }
 
     // 3. Update dynamic model weights with Brier contribution
     const brierContrib = Math.pow(

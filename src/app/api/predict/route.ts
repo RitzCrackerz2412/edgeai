@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
         featureQuality:    output.features.meta.qualityScore,
         missingFields:     output.features.meta.missingFields,
         modelWeights:      output.ensemble.modelWeights,
+        gbdtFeatures:      output.gbdtFeatures,
       },
       cached: false,
     };

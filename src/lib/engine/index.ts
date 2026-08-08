@@ -27,6 +27,7 @@ import { eloModel }      from './elo';
 import { ensembleModel } from './ensemble';
 import { toPredictionFactors } from './explainability';
 import { validatePrediction, type StoredPrediction, type GameResult, validationStore } from './validator';
+import { buildGBDTFeatures } from './gbdtFeatures';
 
 export type { StoredPrediction, GameResult };
 
@@ -64,17 +65,17 @@ async function ensureEloSeeded(game: Game): Promise<void> {
 
 // ── Primary prediction function (uses mock/existing data) ─────────────────────
 
-export async function runPrediction(game: Game): Promise<EnginePrediction> {
+export async function runPrediction(game: Game): Promise<EnginePrediction & { gbdtFeatures: number[] }> {
   await ensureEloSeeded(game);
 
-  // Override ELO with current values from game data (fresher than TEAM_DETAILS)
   eloModel.setRating(game.homeTeam.id, game.homeTeam.eloRating);
   eloModel.setRating(game.awayTeam.id, game.awayTeam.eloRating);
 
-  const features = extractFeatures(game);
-  const ensemble = await ensembleModel.predict(features);
+  const features     = extractFeatures(game);
+  const ensemble     = await ensembleModel.predict(features);
+  const gbdtFeatures = buildGBDTFeatures(features);
 
-  return { features, ensemble };
+  return { features, ensemble, gbdtFeatures };
 }
 
 // ── Live-enriched prediction ──────────────────────────────────────────────────

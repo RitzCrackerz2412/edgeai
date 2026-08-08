@@ -18,8 +18,17 @@ import type { GameFeatureVector } from '../features/types';
 import type { EnsemblePrediction, ModelPrediction, FeatureContribution, PredictionModel } from './types';
 import { eloModel }       from './elo';
 import { logisticModel }  from './logistic';
+import { gbdtModel }      from './gbdt';
 import { eloCalibrator, logisticCalibrator, ensembleCalibrator } from './calibration';
 import { clamp } from '../features/normalize';
+
+// ── Model-type selection ──────────────────────────────────────────────────────
+//
+// Set MODEL_TYPE=gbdt in .env.local (or Vercel env vars) to switch the
+// secondary model from Logistic Regression to GBDT for A/B comparison.
+// Defaults to 'logistic' so production is never silently changed.
+
+const MODEL_TYPE = (process.env.MODEL_TYPE ?? 'logistic') as 'logistic' | 'gbdt';
 
 // ── Model registry ────────────────────────────────────────────────────────────
 
@@ -29,37 +38,37 @@ interface ModelEntry {
   enabled: boolean;
 }
 
-const MODEL_REGISTRY: Record<string, ModelEntry> = {
-  ELO: {
-    model: eloModel,
-    weight: 0.35,
-    enabled: true,
-  },
-  LogisticRegression: {
-    model: logisticModel,
-    weight: 0.65,
-    enabled: true,
-  },
-  GBT: {
-    // GBT model — implement GradientBoostedTreesModel and set enabled=true
-    // once trained on 500+ historical games; adjust weights accordingly.
-    model: {
-      name: 'GBT',
-      version: 'placeholder',
-      predict: async () => { throw new Error('GBT model not yet implemented'); },
+function buildRegistry(): Record<string, ModelEntry> {
+  const useGBDT = MODEL_TYPE === 'gbdt';
+  return {
+    ELO: {
+      model: eloModel,
+      weight: 0.35,
+      enabled: true,
     },
-    weight: 0,
-    enabled: false,
-  },
-};
+    LogisticRegression: {
+      model: logisticModel,
+      weight: useGBDT ? 0 : 0.65,
+      enabled: !useGBDT,
+    },
+    GBDT: {
+      model: gbdtModel,
+      weight: useGBDT ? 0.65 : 0,
+      enabled: useGBDT,
+    },
+  };
+}
+
+const MODEL_REGISTRY = buildRegistry();
 
 // ── Ensemble calibration ──────────────────────────────────────────────────────
 
 function applyCalibration(modelName: string, rawProb: number): number {
   switch (modelName) {
-    case 'ELO':               return eloCalibrator.calibrate(rawProb);
+    case 'ELO':                return eloCalibrator.calibrate(rawProb);
     case 'LogisticRegression': return logisticCalibrator.calibrate(rawProb);
-    default:                  return rawProb;
+    case 'GBDT':               return logisticCalibrator.calibrate(rawProb); // reuse LR calibrator until GBDT-specific one is fitted
+    default:                   return rawProb;
   }
 }
 

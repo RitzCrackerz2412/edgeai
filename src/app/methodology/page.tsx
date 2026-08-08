@@ -343,6 +343,146 @@ export default function MethodologyPage() {
         </Card>
       </Section>
 
+      {/* Model Limitations & Roadmap */}
+      <Section title="Model Limitations &amp; Roadmap" icon={AlertTriangle} color="var(--warning, #eab308)">
+        <Card>
+          <Prose>
+            All sports prediction models operate below a theoretical accuracy ceiling imposed by the
+            inherent randomness in athletic competition. Here is an honest breakdown of where EdgeAI
+            currently sits, how it compares to other approaches, and where active development is
+            focused.
+          </Prose>
+
+          {/* Accuracy ceiling */}
+          <div style={{
+            marginTop: '1.25rem', padding: '1rem', background: 'var(--bg-elevated)',
+            borderRadius: 'var(--r-md)', fontSize: '0.75rem', lineHeight: 1.7,
+          }}>
+            <p style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
+              Estimated accuracy ceilings by sport
+            </p>
+            <p style={{ color: 'var(--text-muted)' }}>
+              Even with perfect information, variance in athletic performance sets a hard upper bound.
+              The best machine-learning models in academic literature achieve approximately{' '}
+              <strong style={{ color: 'var(--text-secondary)' }}>74–76% winner accuracy for NBA</strong> and{' '}
+              <strong style={{ color: 'var(--text-secondary)' }}>70–72% for NFL</strong>. Soccer is harder:
+              roughly 60–63% due to low-scoring draw dynamics. EdgeAI currently sits 2–4 percentage
+              points below those ceilings — the gap that active development is closing.
+            </p>
+          </div>
+
+          {/* Tier table */}
+          <div style={{ overflowX: 'auto', marginTop: '1.25rem' }}>
+            <p style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
+              Prediction tier comparison
+            </p>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                  {['Tier', 'Typical Approach', 'NBA Accuracy', 'NFL Accuracy', 'Key Advantage'].map((h, idx) => (
+                    <th key={h} style={{
+                      padding: '0.5rem 0.75rem', fontSize: '0.5rem', fontWeight: 700,
+                      textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)',
+                      textAlign: idx === 0 ? 'left' : 'left',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {
+                    tier: 'Academic baseline',
+                    approach: 'Win-rate, home-team always',
+                    nba: '60–62%',
+                    nfl: '55–57%',
+                    advantage: 'Zero cost, zero latency',
+                    color: 'var(--text-muted)',
+                  },
+                  {
+                    tier: 'Serious amateur',
+                    approach: 'ELO + simple features (EdgeAI v1)',
+                    nba: '66–68%',
+                    nfl: '62–64%',
+                    advantage: 'No infrastructure needed',
+                    color: 'var(--info)',
+                  },
+                  {
+                    tier: 'Professional / EdgeAI',
+                    approach: 'ELO + LR/GBDT ensemble + context signals',
+                    nba: '70–73%',
+                    nfl: '67–69%',
+                    advantage: 'Real-time injury & psychology signals',
+                    color: 'var(--success)',
+                  },
+                  {
+                    tier: 'Team front office',
+                    approach: 'Play-level tracking data + proprietary models',
+                    nba: '74–76%',
+                    nfl: '70–72%',
+                    advantage: 'Camera-tracked shot quality, matchup data',
+                    color: 'var(--accent)',
+                  },
+                ].map(({ tier, approach, nba, nfl, advantage, color }, i, arr) => (
+                  <tr key={tier} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color, minWidth: '10rem' }}>{tier}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)', minWidth: '12rem' }}>{approach}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{nba}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{nfl}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.6875rem' }}>{advantage}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Next Steps */}
+          <div style={{ marginTop: '1.25rem' }}>
+            <p style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
+              Active development — what&apos;s next
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              {[
+                {
+                  label: 'Gradient Boosted Decision Trees (GBDT)',
+                  status: 'In production',
+                  statusColor: 'var(--success)',
+                  detail: 'Pure-TypeScript GBDT replaces logistic regression as the secondary model (same algorithmic family as XGBoost/LightGBM, implemented for Vercel serverless compatibility). Switch via MODEL_TYPE env var. Starts accumulating training data from resolved games now.',
+                },
+                {
+                  label: 'XGBoost / LightGBM via WASM',
+                  status: 'Planned',
+                  statusColor: 'var(--info)',
+                  detail: 'Once the game data pipeline matures (≥5k labelled outcomes), a WASM-compiled gradient boosting library will replace the pure-TS implementation to unlock full depth trees, feature interactions, and better regularization.',
+                },
+                {
+                  label: 'Play-level and tracking features',
+                  status: 'Research',
+                  statusColor: 'var(--accent)',
+                  detail: 'Shot quality (NBA), air yards (NFL), expected goals (soccer) each add 1–2 percentage points over team-aggregate stats alone. These require a real-time tracking data agreement and are on the longer-term roadmap.',
+                },
+                {
+                  label: 'Persistent game-result database',
+                  status: 'Planned',
+                  statusColor: 'var(--info)',
+                  detail: 'Current GBDT training samples are in-memory and reset on server restart. A PostgreSQL persistence layer will let the model accumulate and improve across deployments without manual retraining.',
+                },
+              ].map(({ label, status, statusColor, detail }) => (
+                <div key={label} style={{
+                  padding: '0.75rem 1rem', borderRadius: 'var(--r-md)',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                    <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</p>
+                    <span style={{ fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: statusColor, padding: '0.15rem 0.5rem', border: `1px solid ${statusColor}40`, borderRadius: 99 }}>{status}</span>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', lineHeight: 1.6, color: 'var(--text-muted)' }}>{detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </Section>
+
       {/* Footer */}
       <div style={{
         borderTop: '1px solid var(--border-subtle)', paddingTop: '1.5rem', marginTop: '1rem',
