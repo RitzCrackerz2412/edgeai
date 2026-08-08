@@ -304,12 +304,13 @@ export const TOURNAMENTS: Record<string, Tournament> = {
   worldcup2026: {
     id: 'worldcup2026', name: 'FIFA World Cup 2026', shortName: 'World Cup 2026',
     sport: 'Soccer', country: 'USA / Mexico / Canada', season: '2026',
-    startDate: '2026-06-11', endDate: '2026-07-26',
-    status: 'Active',
+    startDate: '2026-06-11', endDate: '2026-07-19',
+    status: 'Completed',
     format: '48 teams — 12 groups of 4, Round of 32, Round of 16, Quarterfinals, Semifinals, Final',
     teamCount: 48,
     groups: wcGroups,
     knockoutMatches: wcKnockout,
+    champion: 'Spain',
     topScorer: { name: 'Kylian Mbappé', team: 'France', value: 4, stat: 'goals' },
   },
   ucl2526: {

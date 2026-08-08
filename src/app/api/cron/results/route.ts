@@ -21,10 +21,18 @@ import type { Sport } from '@/lib/types';
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 
 const SPORT_PATHS: Array<{ sport: Sport; path: string }> = [
-  { sport: 'NBA',  path: 'basketball/nba' },
-  { sport: 'NFL',  path: 'football/nfl' },
-  { sport: 'MLB',  path: 'baseball/mlb' },
-  { sport: 'NHL',  path: 'hockey/nhl' },
+  { sport: 'NBA',     path: 'basketball/nba' },
+  { sport: 'NFL',     path: 'football/nfl' },
+  { sport: 'MLB',     path: 'baseball/mlb' },
+  { sport: 'NHL',     path: 'hockey/nhl' },
+  { sport: 'Soccer',  path: 'soccer/eng.1' },
+  { sport: 'Soccer',  path: 'soccer/esp.1' },
+  { sport: 'Soccer',  path: 'soccer/ger.1' },
+  { sport: 'Soccer',  path: 'soccer/ita.1' },
+  { sport: 'Soccer',  path: 'soccer/fra.1' },
+  { sport: 'Soccer',  path: 'soccer/usa.1' },
+  { sport: 'Soccer',  path: 'soccer/fifa.world' },
+  { sport: 'Soccer',  path: 'soccer/uefa.champions' },
 ];
 
 interface ESPNScoreEvent {
