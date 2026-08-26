@@ -177,7 +177,7 @@ const ligue1Standings: LeagueStanding[] = [
 const ligue1Fixtures: LeagueFixture[] = [
   fx('Paris Saint-Germain','PSG','#004170','Monaco','MON','#BD0020','2026-07-05'),
   fx('Marseille','MAR','#2FAEE0','Lyon','LYN','#CC0000','2026-07-04'),
-  fx('PSG','PSG','#004170','Monaco','MON','#BD0020','2026-06-22',3,1,'Final'),
+  fx('Paris Saint-Germain','PSG','#004170','Monaco','MON','#BD0020','2026-06-22',3,1,'Final'),
 ];
 
 // ── MLS Eastern Conference ────────────────────────────────────────────────────
@@ -217,26 +217,34 @@ const mlsWestStandings: LeagueStanding[] = [
   st(15,'mls-sandiego',     'San Diego FC',         'SDF','#00B0CA',34, 8, 9,17, 33,18,-18,['L','D','L','L','W'],'W1'),
 ];
 
-const mlsFixtures: LeagueFixture[] = [
+const mlsEastFixtures: LeagueFixture[] = [
   fx('Inter Miami CF','MIA','#F7B5CD','Columbus Crew','CLB','#FFF200','2026-07-05'),
+  fx('Atlanta United','ATL','#80000A','Philadelphia Union','PHI','#071B3A','2026-07-05'),
+  fx('New York City FC','NYC','#6CACE4','Nashville SC','NSH','#ECE83A','2026-07-06'),
+  fx('Inter Miami CF','MIA','#F7B5CD','Atlanta United','ATL','#80000A','2026-06-21',2,1,'Final'),
+  fx('Columbus Crew','CLB','#FFF200','FC Cincinnati','CIN','#F05323','2026-06-22',2,0,'Final'),
+];
+
+const mlsWestFixtures: LeagueFixture[] = [
   fx('LAFC','LAFC','#C39E6D','LA Galaxy','LAG','#00245D','2026-07-05'),
   fx('Seattle Sounders','SEA','#5D9741','Portland Timbers','POR','#004812','2026-07-04'),
-  fx('Inter Miami CF','MIA','#F7B5CD','Atlanta United','ATL','#80000A','2026-06-21',2,1,'Final'),
+  fx('Real Salt Lake','RSL','#B30838','Colorado Rapids','COL','#862633','2026-07-06'),
   fx('LAFC','LAFC','#C39E6D','Seattle Sounders','SEA','#5D9741','2026-06-22',1,0,'Final'),
+  fx('LA Galaxy','LAG','#00245D','Sporting Kansas City','SKC','#93B3D3','2026-06-21',3,1,'Final'),
 ];
 
 // ── NFL ───────────────────────────────────────────────────────────────────────
 const nflStandings: LeagueStanding[] = [
-  st( 1,'kc-chiefs',    'Kansas City Chiefs',     'KC', '#E31837',17,14,0, 3,42,30.2,17.1,['W','W','W','W','W'],'W3'),
-  st( 2,'det-lions',    'Detroit Lions',          'DET','#0076B6',17,14,0, 3,42,30.4,17.8,['W','W','W','L','W'],'W2'),
+  st( 1,'kc-chiefs',    'Kansas City Chiefs',     'KC', '#E31837',17,14,0, 3,42,30.2,17.1,['W','W','W','W','W'],'W5'),
+  st( 2,'det-lions',    'Detroit Lions',          'DET','#0076B6',17,14,0, 3,42,30.4,17.8,['W','W','W','L','W'],'W1'),
   st( 3,'phi-eagles',   'Philadelphia Eagles',    'PHI','#004C54',17,13,0, 4,39,28.9,18.4,['W','W','L','W','W'],'W2'),
   st( 4,'bal-ravens',   'Baltimore Ravens',       'BAL','#241773',17,13,0, 4,39,29.4,18.8,['W','L','W','W','W'],'W3'),
-  st( 5,'min-vikings',  'Minnesota Vikings',      'MIN','#4F2683',17,12,0, 5,36,27.2,20.8,['W','W','D','W','L'],'L1'),
+  st( 5,'min-vikings',  'Minnesota Vikings',      'MIN','#4F2683',17,12,0, 5,36,27.2,20.8,['W','W','W','W','L'],'L1'),
   st( 6,'buf-bills',    'Buffalo Bills',          'BUF','#00338D',17,12,0, 5,36,27.8,20.1,['W','W','W','L','W'],'W1'),
   st( 7,'gb-packers',   'Green Bay Packers',      'GB', '#203731',17,11,0, 6,33,25.8,20.4,['L','W','W','W','L'],'L1'),
   st( 8,'sf-49ers',     'San Francisco 49ers',    'SF', '#AA0000',17,10,0, 7,30,26.4,20.8,['W','W','L','W','W'],'W2'),
   st( 9,'cin-bengals',  'Cincinnati Bengals',     'CIN','#FB4F14',17,10,0, 7,30,26.2,22.4,['L','W','W','L','W'],'W1'),
-  st(10,'tb-buccaneers','Tampa Bay Buccaneers',   'TB', '#D50A0A',17,10,0, 7,30,26.8,21.4,['W','W','D','W','L'],'L1'),
+  st(10,'tb-buccaneers','Tampa Bay Buccaneers',   'TB', '#D50A0A',17,10,0, 7,30,26.8,21.4,['W','W','W','W','L'],'L1'),
 ];
 
 const nflFixtures: LeagueFixture[] = [
@@ -249,36 +257,36 @@ const nflFixtures: LeagueFixture[] = [
 // ── NBA ───────────────────────────────────────────────────────────────────────
 const nbaStandings: LeagueStanding[] = [
   st( 1,'okc-thunder',   'Oklahoma City Thunder',  'OKC','#007AC1',82,65,0,17,195,122.1,105.8,['W','W','W','W','W'],'W8'),
-  st( 2,'bos-celtics',   'Boston Celtics',         'BOS','#007A33',82,59,0,23,177,120.4,107.2,['W','W','W','L','W'],'W2'),
+  st( 2,'bos-celtics',   'Boston Celtics',         'BOS','#007A33',82,59,0,23,177,120.4,107.2,['W','W','W','L','W'],'W1'),
   st( 3,'den-nuggets',   'Denver Nuggets',         'DEN','#0E2240',82,57,0,25,171,119.8,108.2,['W','L','W','W','W'],'W3'),
-  st( 4,'min-wolves',    'Minnesota Timberwolves', 'MIN','#0C2340',82,54,0,28,162,118.4,109.4,['W','W','L','W','L'],'L1'),
-  st( 5,'cle-cavaliers', 'Cleveland Cavaliers',    'CLE','#860038',82,56,0,26,168,118.2,108.4,['W','W','W','W','L'],'L1'),
-  st( 6,'dal-mavericks', 'Dallas Mavericks',       'DAL','#00538C',82,50,0,32,150,117.2,111.4,['L','W','W','W','W'],'W4'),
-  st( 7,'lac-clippers',  'LA Clippers',            'LAC','#C8102E',82,49,0,33,147,116.8,111.8,['W','L','W','W','L'],'L1'),
-  st( 8,'nyknicks',      'New York Knicks',        'NYK','#006BB6',82,52,0,30,156,116.2,110.4,['W','W','W','L','W'],'W1'),
-  st( 9,'ind-pacers',    'Indiana Pacers',         'IND','#002D62',82,51,0,31,153,117.4,111.2,['D','W','W','L','W'],'W1'),
+  st( 4,'cle-cavaliers', 'Cleveland Cavaliers',    'CLE','#860038',82,56,0,26,168,118.2,108.4,['W','W','W','W','L'],'L1'),
+  st( 5,'min-wolves',    'Minnesota Timberwolves', 'MIN','#0C2340',82,54,0,28,162,118.4,109.4,['W','W','L','W','L'],'L1'),
+  st( 6,'nyknicks',      'New York Knicks',        'NYK','#006BB6',82,52,0,30,156,116.2,110.4,['W','W','W','L','W'],'W1'),
+  st( 7,'ind-pacers',    'Indiana Pacers',         'IND','#002D62',82,51,0,31,153,117.4,111.2,['W','W','W','L','W'],'W1'),
+  st( 8,'dal-mavericks', 'Dallas Mavericks',       'DAL','#00538C',82,50,0,32,150,117.2,111.4,['L','W','W','W','W'],'W4'),
+  st( 9,'lac-clippers',  'LA Clippers',            'LAC','#C8102E',82,49,0,33,147,116.8,111.8,['W','L','W','W','L'],'L1'),
   st(10,'gsw-warriors',  'Golden State Warriors',  'GSW','#1D428A',82,47,0,35,141,115.8,113.2,['L','W','L','W','W'],'W2'),
 ];
 
 const nbaFixtures: LeagueFixture[] = [
   fx('Oklahoma City Thunder','OKC','#007AC1','Denver Nuggets','DEN','#0E2240','2026-10-22'),
   fx('Boston Celtics','BOS','#007A33','Cleveland Cavaliers','CLE','#860038','2026-10-22'),
-  fx('OKC Thunder','OKC','#007AC1','Boston Celtics','BOS','#007A33','2026-06-15',118,106,'Final'),
+  fx('Oklahoma City Thunder','OKC','#007AC1','Boston Celtics','BOS','#007A33','2026-06-15',118,106,'Final'),
   fx('Denver Nuggets','DEN','#0E2240','Minnesota Timberwolves','MIN','#0C2340','2026-06-12',108,104,'Final'),
 ];
 
 // ── NHL ───────────────────────────────────────────────────────────────────────
 const nhlStandings: LeagueStanding[] = [
   st( 1,'wpg-jets',        'Winnipeg Jets',        'WPG','#041E42',82,56,6,20,118,3.54,2.44,['W','W','W','W','W'],'W7'),
-  st( 2,'wsh-capitals',    'Washington Capitals',  'WSH','#C8102E',82,54,8,20,116,3.48,2.50,['W','W','W','L','W'],'W2'),
-  st( 3,'dal-stars',       'Dallas Stars',         'DAL','#006847',82,52,10,20,114,3.44,2.52,['W','W','L','W','W'],'W3'),
+  st( 2,'wsh-capitals',    'Washington Capitals',  'WSH','#C8102E',82,54,8,20,116,3.48,2.50,['W','W','W','L','W'],'W1'),
+  st( 3,'dal-stars',       'Dallas Stars',         'DAL','#006847',82,52,10,20,114,3.44,2.52,['W','W','L','W','W'],'W2'),
   st( 4,'fla-panthers',    'Florida Panthers',     'FLA','#C8102E',82,52,10,20,114,3.42,2.54,['L','W','W','W','L'],'L1'),
-  st( 5,'car-hurricanes',  'Carolina Hurricanes',  'CAR','#CC0000',82,51,11,20,113,3.40,2.54,['W','D','W','W','W'],'W3'),
-  st( 6,'tor-mapleleafs',  'Toronto Maple Leafs',  'TOR','#00205B',82,50,12,20,112,3.38,2.56,['W','W','L','W','W'],'W2'),
-  st( 7,'col-avalanche',   'Colorado Avalanche',   'COL','#6F263D',82,50,12,20,112,3.38,2.56,['W','L','W','W','L'],'L1'),
-  st( 8,'nyr-rangers',     'New York Rangers',     'NYR','#0038A8',82,50,12,20,112,3.36,2.56,['W','W','W','D','L'],'L1'),
-  st( 9,'edm-oilers',      'Edmonton Oilers',      'EDM','#FF4C00',82,50,12,20,112,3.38,2.58,['L','W','W','W','W'],'W4'),
-  st(10,'van-canucks',     'Vancouver Canucks',    'VAN','#00205B',82,52,10,20,114,3.42,2.52,['W','W','W','L','W'],'W1'),
+  st( 5,'van-canucks',     'Vancouver Canucks',    'VAN','#00205B',82,52,10,20,114,3.42,2.52,['W','W','W','L','W'],'W1'),
+  st( 6,'car-hurricanes',  'Carolina Hurricanes',  'CAR','#CC0000',82,51,11,20,113,3.40,2.54,['W','L','W','W','W'],'W3'),
+  st( 7,'tor-mapleleafs',  'Toronto Maple Leafs',  'TOR','#00205B',82,50,12,20,112,3.38,2.56,['W','W','L','W','W'],'W2'),
+  st( 8,'col-avalanche',   'Colorado Avalanche',   'COL','#6F263D',82,50,12,20,112,3.38,2.56,['W','L','W','W','L'],'L1'),
+  st( 9,'nyr-rangers',     'New York Rangers',     'NYR','#0038A8',82,50,12,20,112,3.36,2.56,['W','W','W','W','L'],'L1'),
+  st(10,'edm-oilers',      'Edmonton Oilers',      'EDM','#FF4C00',82,50,12,20,112,3.38,2.58,['L','W','W','W','W'],'W4'),
 ];
 
 const nhlFixtures: LeagueFixture[] = [
@@ -297,16 +305,16 @@ const mlbStandings: LeagueStanding[] = [
   st( 5,'cle-guardians',  'Cleveland Guardians',   'CLE','#E31937',81,48,0,33,144,5.0,4.0,['W','W','L','W','L'],'L1'),
   st( 6,'nym-mets',       'New York Mets',         'NYM','#002D72',81,47,0,34,141,5.0,4.2,['W','L','W','W','W'],'W3'),
   st( 7,'hou-astros',     'Houston Astros',        'HOU','#002D62',81,47,0,34,141,5.1,4.1,['L','W','W','L','W'],'W1'),
-  st( 8,'mil-brewers',    'Milwaukee Brewers',     'MIL','#FFC52F',81,47,0,34,141,5.0,4.1,['W','W','W','D','L'],'L1'),
-  st( 9,'kc-royals',      'Kansas City Royals',    'KC', '#004687',81,44,0,37,132,4.9,4.4,['L','W','W','W','L'],'L1'),
-  st(10,'sd-padres',      'San Diego Padres',      'SD', '#2F241D',81,47,0,34,141,5.1,4.2,['W','W','L','W','W'],'W2'),
+  st( 8,'mil-brewers',    'Milwaukee Brewers',     'MIL','#FFC52F',81,47,0,34,141,5.0,4.1,['W','W','W','W','L'],'L1'),
+  st( 9,'sd-padres',      'San Diego Padres',      'SD', '#2F241D',81,47,0,34,141,5.1,4.2,['W','W','L','W','W'],'W2'),
+  st(10,'kc-royals',      'Kansas City Royals',    'KC', '#004687',81,44,0,37,132,4.9,4.4,['L','W','W','W','L'],'L1'),
 ];
 
 const mlbFixtures: LeagueFixture[] = [
   fx('Los Angeles Dodgers','LAD','#005A9C','San Diego Padres','SD','#2F241D','2026-07-04'),
-  fx('New York Yankees','NYY','#003087','Boston Red Sox','BOS','#BD3039','2026-07-04'),
+  fx('New York Yankees','NYY','#003087','Cleveland Guardians','CLE','#E31937','2026-07-04'),
   fx('Atlanta Braves','ATL','#CE1141','Philadelphia Phillies','PHI','#E81828','2026-07-05'),
-  fx('Los Angeles Dodgers','LAD','#005A9C','San Francisco Giants','SF','#FD5A1E','2026-06-22',6,2,'Final'),
+  fx('Los Angeles Dodgers','LAD','#005A9C','San Diego Padres','SD','#2F241D','2026-06-22',6,2,'Final'),
   fx('New York Mets','NYM','#002D72','Atlanta Braves','ATL','#CE1141','2026-06-22',3,4,'Final'),
 ];
 
@@ -340,12 +348,12 @@ export const LEAGUES: Record<string, LeagueData> = {
   'mls-east': {
     id: 'mls-east', name: 'MLS Eastern Conference', shortName: 'MLS East',
     sport: 'Soccer', country: 'USA', season: '2026',
-    tier: 'major', standings: mlsEastStandings, fixtures: mlsFixtures,
+    tier: 'major', standings: mlsEastStandings, fixtures: mlsEastFixtures,
   },
   'mls-west': {
     id: 'mls-west', name: 'MLS Western Conference', shortName: 'MLS West',
     sport: 'Soccer', country: 'USA', season: '2026',
-    tier: 'major', standings: mlsWestStandings, fixtures: mlsFixtures,
+    tier: 'major', standings: mlsWestStandings, fixtures: mlsWestFixtures,
   },
   nfl: {
     id: 'nfl', name: 'National Football League', shortName: 'NFL',
