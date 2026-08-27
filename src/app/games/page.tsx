@@ -5,6 +5,8 @@ import type { Game } from '@/lib/types';
 import { isoDateInTZ } from '@/lib/utils';
 import { computeSubModels } from '@/lib/submodels';
 import { DisagreementSortControl } from '@/components/games/DisagreementSortControl';
+import { getTopScorers } from '@/lib/topPlayers';
+import { TopScorerPanel } from '@/components/games/TopScorerPanel';
 
 export const revalidate = 60;
 
@@ -325,6 +327,16 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
 
   const games = await getUpcomingGames({ includeRecent: true });
 
+  // Top scorers: pull from today + tomorrow games only (most actionable)
+  const now   = new Date();
+  const d0    = isoDateInTZ(now, 'America/New_York');
+  const d1    = isoDateInTZ(new Date(now.getTime() + 86_400_000), 'America/New_York');
+  const nearGames = games.filter(g => {
+    const d = g.date.slice(0, 10);
+    return d === d0 || d === d1;
+  });
+  const topScorers = getTopScorers(nearGames.length ? nearGames : games, 12);
+
   // Pre-compute disagreement for every game — pure function, no extra I/O
   const disagreementMap = new Map<string, boolean>();
   const disagreementScore = new Map<string, number>();
@@ -393,6 +405,9 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
           disagreementMap={disagreementMap}
         />
       )}
+
+      {/* Top projected scorers */}
+      <TopScorerPanel scorers={topScorers} />
 
       {/* Time-bucketed sections */}
       {SECTIONS.map(({ key, label }) => {
