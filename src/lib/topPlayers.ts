@@ -61,9 +61,9 @@ function seasonAvgLine(p: PlayerDetail): string {
   return String(s[0]?.value ?? '');
 }
 
-function pickScoringProj(p: PlayerDetail): { label: string; value: string; unit: string } {
+function pickScoringProj(p: PlayerDetail): { label: string; value: string; unit: string } | null {
   const proj = p.aiProjection.projectedStats;
-  if (!proj.length) return { label: 'Stat', value: '—', unit: '' };
+  if (!proj.length) return null;
 
   const sport = p.sport;
   const idx = SCORE_STAT_INDEX[sport] ?? 0;
@@ -72,10 +72,12 @@ function pickScoringProj(p: PlayerDetail): { label: string; value: string; unit:
   // fallback to first stat labelled "TDs" or "Goals" if the index overshoots
   let entry = proj[Math.min(idx, proj.length - 1)];
 
-  // For NFL, prefer the TDs entry regardless of position
+  // NFL: only players with a touchdown projection belong on a scorers panel
+  // (excludes linemen/defenders whose stats are pressures, tackles, etc.)
   if (sport === 'NFL') {
     const tdEntry = proj.find(x => x.label === 'TDs' || x.label.includes('TD'));
-    if (tdEntry) entry = tdEntry;
+    if (!tdEntry) return null;
+    entry = tdEntry;
   }
 
   const label = SCORE_LABEL[sport] ?? entry.label;
@@ -99,6 +101,7 @@ export function getTopScorers(games: Game[], limit = 12): ScorerProjection[] {
     if (p.status === 'Out') continue;
 
     const proj = pickScoringProj(p);
+    if (!proj) continue;
 
     results.push({
       id:          p.id,
