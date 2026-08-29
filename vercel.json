@@ -9,7 +9,7 @@
     { "path": "/api/cron/refresh",   "schedule": "0 0 * * *"    },
     { "path": "/api/cron/predict",   "schedule": "0 6 * * *"    },
     { "path": "/api/cron/validate",  "schedule": "0 7 * * *"    },
-    { "path": "/api/cron/results",   "schedule": "0 * * * *"    }
+    { "path": "/api/cron/results",   "schedule": "0 8 * * *"    }
   ],
   "headers": [
     {
