@@ -99,7 +99,7 @@ interface ESPNVenue {
 interface ESPNStatus {
   displayClock: string;
   period: number;
-  type: { name: string; completed: boolean };
+  type: { name: string; completed: boolean; shortDetail?: string; detail?: string };
 }
 
 interface ESPNCompetition {
@@ -179,6 +179,7 @@ export class ESPNProvider implements SportsDataProvider {
         status:       normStatus(ev.status.type.name),
         period:       ev.status.period || undefined,
         clock:        ev.status.displayClock || undefined,
+        statusDetail: ev.status.type.shortDetail || ev.status.type.detail || undefined,
         homeScore:    home?.score ? parseInt(home.score, 10) : undefined,
         awayScore:    away?.score ? parseInt(away.score, 10) : undefined,
       };

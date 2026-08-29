@@ -5,6 +5,7 @@ import { getRecentPredictions, getTrendingTeams } from '@/lib/dashboardData';
 import { LiveDashboardMarket } from '@/components/finance/LiveDashboardMarket';
 import { getMarketOverview } from '@/lib/finance/providers/yahoo';
 import { ChevronRight, ChevronDown, Check, X } from 'lucide-react';
+import { livePhase } from '@/lib/gameDisplay';
 
 export const metadata: Metadata = { title: 'Dashboard — EdgeAI' };
 export const revalidate = 60;
@@ -154,11 +155,9 @@ export default async function HomePage() {
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{g.homeTeam.abbreviation}</span>
               <span className="ticker-score">{g.homeScore ?? 0}–{g.awayScore ?? 0}</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{g.awayTeam.abbreviation}</span>
-              {g.clock && (
-                <span style={{ fontSize: '0.625rem', fontFamily: 'var(--font-data)', color: 'var(--text-muted)' }}>
-                  {g.clock}{g.period ? ` P${g.period}` : ''}
-                </span>
-              )}
+              <span style={{ fontSize: '0.625rem', fontFamily: 'var(--font-data)', color: 'var(--text-muted)' }}>
+                {livePhase(g)}
+              </span>
             </Link>
           ))}
         </div>

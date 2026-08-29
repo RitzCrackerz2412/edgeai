@@ -19,6 +19,8 @@ export interface RawGame {
   status: 'scheduled' | 'inprogress' | 'closed' | 'postponed' | 'cancelled';
   period?: number;
   clock?: string;
+  /** ESPN's human phase label, e.g. "Top 8th", "HT", "End of 3rd" */
+  statusDetail?: string;
   homeScore?: number;
   awayScore?: number;
   /** Consensus odds attached by an odds provider, if available */

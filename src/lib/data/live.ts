@@ -12,52 +12,101 @@ import { enrichTeam } from '../results/enrichTeam';
 import { analyzeMarket } from '../markets/analyzer';
 
 // ── Team lookup ───────────────────────────────────────────────────────────────
+//
+// Matching an ESPN display name to a stored Team must be conservative:
+// a wrong match attaches real live scores to the wrong club, its ELO, and
+// its colors (historically "Bay FC" substring-matched "AFC Bournemouth").
+// When no confident match exists we return null and the caller builds a
+// fallback team carrying the real ESPN name — always correct to display.
 
-function buildNameIndex(): Map<string, Team> {
-  const idx = new Map<string, Team>();
-  for (const t of ALL_TEAMS) {
-    idx.set(t.name.toLowerCase(), t);
-    idx.set(t.abbreviation.toLowerCase(), t);
-    // Also index by short name parts (e.g. "Chiefs" from "Kansas City Chiefs")
-    const parts = t.name.split(' ');
-    if (parts.length > 1) idx.set(parts[parts.length - 1].toLowerCase(), t);
+/** ESPN league label → which stored team leagues may be matched against. */
+const EURO_CLUB_POOL = ['Premier League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1'];
+const LEAGUE_TEAM_POOLS: Record<string, string[]> = {
+  EPL:                ['Premier League'],
+  'La Liga':          ['La Liga'],
+  Bundesliga:         ['Bundesliga'],
+  'Serie A':          ['Serie A'],
+  'Ligue 1':          ['Ligue 1'],
+  MLS:                ['MLS East', 'MLS West'],
+  'World Cup':        ['FIFA World Cup'],
+  'Nations League':   ['FIFA World Cup', 'UEFA Euro'],
+  'Champions League':  EURO_CLUB_POOL,
+  'Europa League':     EURO_CLUB_POOL,
+  'Conference League': EURO_CLUB_POOL,
+  'Club World Cup':    [...EURO_CLUB_POOL, 'MLS East', 'MLS West'],
+};
+
+/** Tokens too generic to identify a club on their own. */
+const GENERIC_TOKENS = new Set([
+  'fc', 'afc', 'cf', 'sc', 'ac', 'as', 'ssc', 'cd', 'rcd', 'rc', 'ud', 'us',
+  'club', 'de', 'la', 'los', 'el', 'st', 'saint', 'utd', 'united', 'city',
+  'town', 'county', 'albion', 'wanderers', 'rovers', 'athletic', 'atletico',
+  'sporting', 'racing', 'the', 'and', 'of', '1', 'i', 'ii',
+]);
+
+function normName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip diacritics
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function distinctiveTokens(s: string): string[] {
+  return normName(s).split(' ').filter(t => t.length > 0 && !GENERIC_TOKENS.has(t));
+}
+
+function findTeam(sport: Sport, league: string, displayName: string): Team | null {
+  const q = normName(displayName);
+  if (!q) return null;
+
+  // Candidate pool: league-gated for soccer (all soccer leagues share one
+  // sport, so sport-wide matching caused cross-league pollution). Leagues we
+  // don't stock (NWSL, Liga MX, Eredivisie, …) get no pool → fallback team.
+  let pool: Team[];
+  if (sport === 'Soccer') {
+    const leagues = LEAGUE_TEAM_POOLS[league];
+    if (!leagues) return null;
+    pool = ALL_TEAMS.filter(t => t.sport === 'Soccer' && leagues.includes(t.league));
+  } else {
+    pool = ALL_TEAMS.filter(t => t.sport === sport);
   }
-  return idx;
-}
 
-let _nameIndex: Map<string, Team> | null = null;
-function getNameIndex(): Map<string, Team> {
-  if (!_nameIndex) _nameIndex = buildNameIndex();
-  return _nameIndex;
-}
+  // 1. Exact normalized-name match
+  const exact = pool.find(t => normName(t.name) === q);
+  if (exact) return exact;
 
-function findTeam(sport: Sport, displayName: string): Team | null {
-  const idx = getNameIndex();
-  const q = displayName.toLowerCase();
+  // 2. Whole-query abbreviation match ("LAFC", "PSG")
+  const abbr = pool.find(t => t.abbreviation.toLowerCase() === q);
+  if (abbr) return abbr;
 
-  // 1. Exact full-name match with sport check
-  const byName = idx.get(q);
-  if (byName && byName.sport === sport) return byName;
+  // 3. Distinctive-token overlap — the match must be unique and one side's
+  // distinctive tokens must be a subset of the other's. Ambiguity → null.
+  const qd = distinctiveTokens(displayName);
+  if (qd.length === 0) return null;
 
-  // 2. Linear scan for partial-name match within sport
-  const sportTeams = ALL_TEAMS.filter(t => t.sport === sport);
-  // Abbreviation match: only treat as a hit if the abbreviation appears as a
-  // standalone word in the query, not just as a substring (avoids "VER" matching "cape verde")
-  const abbrWordMatch = (abbr: string) => {
-    const a = abbr.toLowerCase();
-    return new RegExp(`(^|\\s)${a}(\\s|$)`).test(q);
-  };
-  return (
-    sportTeams.find(t => t.name.toLowerCase() === q) ??
-    sportTeams.find(t => abbrWordMatch(t.abbreviation)) ??
-    sportTeams.find(t => t.name.toLowerCase().includes(q.split(' ').pop()!)) ??
-    null
-  );
+  let best: Team | null = null;
+  let bestScore = 0;
+  let tied = false;
+  for (const t of pool) {
+    const td = distinctiveTokens(t.name);
+    if (td.length === 0) continue;
+    const overlap = td.filter(x => qd.includes(x)).length;
+    if (overlap === 0) continue;
+    const subset = qd.every(x => td.includes(x)) || td.every(x => qd.includes(x));
+    if (!subset) continue;
+    if (overlap > bestScore) { best = t; bestScore = overlap; tied = false; }
+    else if (overlap === bestScore) tied = true;
+  }
+  return tied ? null : best;
 }
 
 function makeFallbackTeam(sport: Sport, league: string, displayName: string, abbr: string, color: string): Team {
+  // ID from the full name slug — abbreviation-based ids collided across games
+  const slug = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || abbr.toLowerCase();
   return {
-    id: `live-${abbr.toLowerCase()}`,
+    id: `live-${slug}`,
     name: displayName,
     abbreviation: abbr,
     logo: '',
@@ -266,9 +315,9 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
 
 export function rawGameToGame(raw: RawGame): Game | null {
   // ESPN homeTeamId in the provider is ESPN's internal numeric ID (not abbr).
-  // We match by displayName within the same sport.
-  const homeTeam = findTeam(raw.sport, raw.homeTeamName);
-  const awayTeam = findTeam(raw.sport, raw.awayTeamName);
+  // We match by displayName within the same sport AND league.
+  const homeTeam = findTeam(raw.sport, raw.league, raw.homeTeamName);
+  const awayTeam = findTeam(raw.sport, raw.league, raw.awayTeamName);
 
   // Build minimal fallbacks so live games always show even if team not in our dataset
   const toAbbr = (name: string) => name.split(' ').map(w => w[0] ?? '').join('').slice(0, 3).toUpperCase() || '???';
@@ -350,6 +399,7 @@ export function rawGameToGame(raw: RawGame): Game | null {
     status,
     period: raw.period,
     clock: raw.clock,
+    statusDetail: raw.statusDetail,
     homeScore: raw.homeScore,
     awayScore: raw.awayScore,
     prediction,

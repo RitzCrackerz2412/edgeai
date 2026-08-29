@@ -4,6 +4,7 @@ import { getUpcomingGames } from '@/lib/api';
 import type { Game } from '@/lib/types';
 import { isoDateInTZ } from '@/lib/utils';
 import { computeSubModels } from '@/lib/submodels';
+import { livePhase, shortTeamName } from '@/lib/gameDisplay';
 import { DisagreementSortControl } from '@/components/games/DisagreementSortControl';
 import { getTopScorers } from '@/lib/topPlayers';
 import { TopScorerPanel } from '@/components/games/TopScorerPanel';
@@ -117,8 +118,7 @@ function LiveScoreCard({ game: g }: { game: Game }) {
         <div style={{ display:'flex', alignItems:'center', gap:'0.3125rem' }}>
           <span className="live-dot-sm" />
           <span style={{ fontSize:'0.5625rem', fontWeight:700, color:'#ef4444' }}>
-            {g.status === 'Halftime' ? 'HT' : g.clock ? g.clock : 'LIVE'}
-            {g.status !== 'Halftime' && g.period ? ` · P${g.period}` : ''}
+            {livePhase(g)}
           </span>
         </div>
       </div>
@@ -132,7 +132,7 @@ function LiveScoreCard({ game: g }: { game: Game }) {
           <div key={team.id} style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
             <span style={{ width:7, height:7, borderRadius:'50%', background:team.color, flexShrink:0, display:'inline-block' }} />
             <span style={{ fontSize:'0.8125rem', fontWeight:leads ? 700 : 400, color:leads ? 'var(--text-primary)' : 'var(--text-secondary)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-              {team.name.split(' ').slice(-1)[0]}
+              {shortTeamName(team)}
             </span>
             {scoreAvail && (
               <span className="text-score" style={{ fontSize:'1.25rem', color:leads ? team.color : 'var(--text-primary)' }}>
@@ -186,7 +186,7 @@ function FixtureRow({ game: g, highUncertainty = false }: { game: Game; highUnce
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         }}>
           <span className="hidden sm:inline">{g.homeTeam.name}</span>
-          <span className="sm:hidden">{g.homeTeam.name.split(' ').slice(-1)[0]}</span>
+          <span className="sm:hidden">{shortTeamName(g.homeTeam)}</span>
         </span>
       </div>
 
@@ -200,7 +200,7 @@ function FixtureRow({ game: g, highUncertainty = false }: { game: Game; highUnce
           </span>
         ) : isLive(g.status) ? (
           <span style={{ fontSize:'0.625rem', fontWeight:700, color:'#ef4444' }}>
-            {g.clock ? g.clock : 'LIVE'}{g.period ? ` P${g.period}` : ''}
+            {livePhase(g)}
           </span>
         ) : (
           <span style={{ fontSize:'0.6875rem', color:'var(--text-muted)', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
@@ -227,7 +227,7 @@ function FixtureRow({ game: g, highUncertainty = false }: { game: Game; highUnce
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'right',
         }}>
           <span className="hidden sm:inline">{g.awayTeam.name}</span>
-          <span className="sm:hidden">{g.awayTeam.name.split(' ').slice(-1)[0]}</span>
+          <span className="sm:hidden">{shortTeamName(g.awayTeam)}</span>
         </span>
         <span style={{ width:7, height:7, borderRadius:'50%', background:g.awayTeam.color, flexShrink:0, display:'inline-block' }} />
       </div>

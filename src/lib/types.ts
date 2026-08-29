@@ -89,6 +89,8 @@ export interface Game {
   clock?: string;
   /** Current period / quarter / inning */
   period?: number;
+  /** Provider's human phase label, e.g. "Top 8th", "HT", "End of 3rd" */
+  statusDetail?: string;
   /** Actual home score (live or final) */
   homeScore?: number;
   /** Actual away score (live or final) */
