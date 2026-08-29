@@ -86,6 +86,11 @@ export async function POST(req: NextRequest) {
       predictedAwayScore: prediction.predictedScore.away,
       gbdtFeatures:       output.gbdtFeatures,
       predictedAt:        output.ensemble.computedAt,
+      modelProbs:         Object.fromEntries(
+        Object.entries(output.ensemble.individualPredictions).map(([name, pred]) => [
+          name, pred.homeWinProbability,
+        ]),
+      ),
     }).catch(() => {});
 
     return NextResponse.json(responseData);

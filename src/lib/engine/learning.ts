@@ -217,12 +217,27 @@ export function processPostGame(data: PostGameData): LearningResult {
       addGBDTSample(data.storedPrediction.gbdtFeatures, outcome === 1, data.gameId, data.sport);
     }
 
-    // 3. Update dynamic model weights with Brier contribution
-    const brierContrib = Math.pow(
-      data.storedPrediction.predictedHomeWinProbability - outcome, 2,
-    );
-    weightStore.record(data.sport, 'elo', brierContrib);
-    weightStore.record(data.sport, 'logistic', brierContrib);
+    // 3. Update dynamic model weights with each sub-model's OWN Brier
+    // contribution, so inverse-Brier weights can actually diverge. Falls
+    // back to the ensemble probability when per-model probs weren't
+    // captured (e.g. predictions reloaded from the DB after a restart).
+    const MODEL_KEY_MAP: Record<string, 'elo' | 'logistic' | 'gbt'> = {
+      ELO: 'elo', LogisticRegression: 'logistic', GBDT: 'gbt',
+    };
+    const modelProbs = data.storedPrediction.modelProbs;
+    if (modelProbs && Object.keys(modelProbs).length > 0) {
+      for (const [name, prob] of Object.entries(modelProbs)) {
+        const key = MODEL_KEY_MAP[name];
+        if (!key) continue;
+        weightStore.record(data.sport, key, Math.pow(prob - outcome, 2));
+      }
+    } else {
+      const brierContrib = Math.pow(
+        data.storedPrediction.predictedHomeWinProbability - outcome, 2,
+      );
+      weightStore.record(data.sport, 'elo', brierContrib);
+      weightStore.record(data.sport, 'logistic', brierContrib);
+    }
   }
 
   // 4. Trigger retraining if threshold met

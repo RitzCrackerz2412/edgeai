@@ -21,6 +21,13 @@ export interface PersistedPrediction {
   predictedAwayScore?: number;
   gbdtFeatures: number[];
   predictedAt: string;        // ISO
+  /**
+   * Per-sub-model calibrated home win probabilities (e.g. {ELO: 0.61,
+   * LogisticRegression: 0.64}). Lets validation score each model on its
+   * own output so dynamic weights diverge meaningfully. In-memory only —
+   * absent for predictions reloaded from the DB after a restart.
+   */
+  modelProbs?: Record<string, number>;
 }
 
 // In-memory cache — warm on startup from DB if available

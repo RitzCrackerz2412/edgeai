@@ -122,7 +122,13 @@ export function extractTeamFeatures(
     : winRateFromRecord(team.awayRecord);
 
   // ── Form & momentum ────────────────────────────────────────────────────────
-  const recentForm = team.last5.filter(r => r === 'W').length / Math.max(1, team.last5.length);
+  // Empirical-Bayes shrinkage: a 5-game win rate is extremely noisy, so
+  // shrink toward the 0.5 prior with pseudo-count k=3 (Beta(1.5, 1.5)).
+  // 5-0 maps to 0.81 rather than 1.0; 0-5 to 0.19 rather than 0.0.
+  const formWins  = team.last5.filter(r => r === 'W').length
+                  + team.last5.filter(r => r === 'D').length * 0.5;
+  const formN     = team.last5.length;
+  const recentForm = (formWins + 1.5) / (formN + 3);
   const momentum   = momentumFromSequence(team.last5);
   const streak     = streakValue(team.last5);
 

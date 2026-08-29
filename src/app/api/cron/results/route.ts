@@ -149,6 +149,7 @@ export async function GET(req: NextRequest) {
           predictedAt:                 stored.predictedAt,
           validatedAt:                 new Date().toISOString(),
           gbdtFeatures:                stored.gbdtFeatures,
+          modelProbs:                  stored.modelProbs,
         },
       });
 

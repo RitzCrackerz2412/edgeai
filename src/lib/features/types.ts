@@ -160,6 +160,7 @@ export interface GameContextSignals {
 
 export interface FeatureMeta {
   gameId: string;
+  sport: string;                // sport key, drives per-sport model weighting
   generatedAt: string;          // ISO 8601
   dataFreshnessSeconds: number; // age of the oldest underlying data point
   missingFields: string[];      // fields that fell back to defaults
@@ -178,4 +179,10 @@ export interface GameFeatureVector {
   derived: DerivedFeatures;
   /** Psychology, officiating, and late-move signals */
   gameContext: GameContextSignals;
+  /**
+   * Vig-free market-implied home win probability (0–1), when odds data is
+   * available. One input among many — statistical models stay primary;
+   * the ensemble blends it at low weight in logit space.
+   */
+  marketImpliedHomeProb?: number;
 }

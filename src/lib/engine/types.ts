@@ -58,6 +58,8 @@ export interface ValidationRecord {
   predictedAt: string;
   validatedAt: string;
   gbdtFeatures?: number[];
+  /** Per-sub-model calibrated home win probs captured at prediction time */
+  modelProbs?: Record<string, number>;
 }
 
 // ── Model interface ───────────────────────────────────────────────────────────

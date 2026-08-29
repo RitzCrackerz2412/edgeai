@@ -74,12 +74,14 @@ function computeDerived(
 
 function buildMeta(
   gameId: string,
+  sport: string,
   missingFields: string[],
   dataFreshnessSeconds: number,
 ): FeatureMeta {
   const qualityScore = clamp(1 - missingFields.length * 0.08, 0.2, 1);
   return {
     gameId,
+    sport,
     generatedAt: new Date().toISOString(),
     dataFreshnessSeconds,
     missingFields,
@@ -179,8 +181,16 @@ export function extractFeatures(game: Game): GameFeatureVector {
     gameContext,
   );
 
+  // Vig-free market probability, when the game already carries odds data.
+  // One input among many — the ensemble blends it at low fixed weight.
+  const marketHome = game.prediction?.marketAnalysis?.marketHomeProb;
+  const marketImpliedHomeProb =
+    marketHome !== undefined && marketHome > 0 && marketHome < 100
+      ? marketHome / 100
+      : undefined;
+
   return {
-    meta: buildMeta(game.id, missing, 0),
+    meta: buildMeta(game.id, game.sport, missing, 0),
     home,
     away,
     homePlayers,
@@ -188,6 +198,7 @@ export function extractFeatures(game: Game): GameFeatureVector {
     environment,
     derived,
     gameContext,
+    marketImpliedHomeProb,
   };
 }
 
@@ -249,7 +260,7 @@ export async function extractFeaturesLive(
     );
 
     return {
-      meta: buildMeta(game.id, missing, 0),
+      meta: buildMeta(game.id, game.sport, missing, 0),
       home: homeTeamFeatures,
       away: awayTeamFeatures,
       homePlayers: homeInjuries.map(extractPlayerFeaturesFromInjury),
@@ -261,6 +272,6 @@ export async function extractFeaturesLive(
   } catch {
     // Fall back to mock-based features if live fetch fails
     missing.push('live_data_fetch_failed');
-    return { ...base, meta: buildMeta(game.id, missing, 99999) };
+    return { ...base, meta: buildMeta(game.id, game.sport, missing, 99999) };
   }
 }
