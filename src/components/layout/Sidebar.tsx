@@ -20,6 +20,7 @@ const PRIMARY_NAV = [
 ];
 
 const ANALYSIS_NAV = [
+  { href: '/edge',             label: 'Edge Sheet',  Icon: Zap },
   { href: '/accuracy',         label: 'Accuracy',    Icon: BarChart2 },
   { href: '/history',          label: 'History',     Icon: History },
   { href: '/matchup',          label: 'Matchup',     Icon: Swords },
