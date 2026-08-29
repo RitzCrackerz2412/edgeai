@@ -222,7 +222,7 @@ export function LiveDashboardMarket({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <BarChart2 size={13} color={FC} />
           <span style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: FC }}>
-            Market Intelligence
+            Markets
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -491,8 +491,8 @@ export function LiveDashboardMarket({
         </div>
       </div>
 
-      <div style={{ textAlign: 'center', fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.75rem', opacity: 0.6 }}>
-        Data via Yahoo Finance · Auto-refreshes every 30s · Not financial advice
+      <div style={{ textAlign: 'center', fontSize: '0.5625rem', color: 'var(--text-secondary)', marginTop: '0.75rem', opacity: 0.7 }}>
+        Market data via Yahoo Finance
       </div>
     </div>
   );

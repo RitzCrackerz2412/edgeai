@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, ChevronDown } from 'lucide-react';
+import { Menu, ChevronDown, User as UserIcon } from 'lucide-react';
 import SearchBox from '@/components/ui/SearchBox';
 import NotificationBell from '@/components/ui/NotificationBell';
 
@@ -67,9 +67,8 @@ export function TopBar({ onMenuClick, sidebarWidth }: TopBarProps) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '0.5625rem', fontWeight: 800, color: '#fff',
           }}>
-            G
+            <UserIcon size={10} />
           </div>
-          <span style={{ fontSize: '0.75rem', display: 'none' }} className="sm:block">Guest</span>
           <ChevronDown size={10} style={{ color: 'var(--text-muted)' }} />
         </button>
       </div>

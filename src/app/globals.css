@@ -2,44 +2,44 @@
 
 /* ─── Design tokens ─────────────────────────────────────────── */
 :root {
-  /* Surfaces — neutral near-black, no blue tint */
-  --bg-base:     #0D0D0D;
-  --bg-surface:  #111111;
-  --bg-card:     #161616;
-  --bg-elevated: #1C1C1C;
-  --bg-hover:    #222222;
+  /* Surfaces — deep navy base */
+  --bg-base:     #0B1220;
+  --bg-surface:  #0E1626;
+  --bg-card:     #111B2E;
+  --bg-elevated: #16233A;
+  --bg-hover:    #1B2A45;
 
   /* Borders — hairline, low-opacity white */
-  --border-subtle:  rgba(255,255,255,0.04);
-  --border-default: rgba(255,255,255,0.08);
-  --border-strong:  rgba(255,255,255,0.14);
-  --border-accent:  rgba(245,158,11,0.4);
+  --border-subtle:  rgba(255,255,255,0.05);
+  --border-default: rgba(255,255,255,0.09);
+  --border-strong:  rgba(255,255,255,0.16);
+  --border-accent:  rgba(45,126,255,0.45);
 
   /* Text */
-  --text-primary:   #F0F0F0;
-  --text-secondary: #888888;
-  --text-muted:     #444444;
-  --text-disabled:  #2A2A2A;
-  --text-accent:    #F59E0B;
+  --text-primary:   #F0F2F5;
+  --text-secondary: #8A94A6;
+  --text-muted:     #5A6478;
+  --text-disabled:  #333D50;
+  --text-accent:    #2D7EFF;
 
-  /* Accent — amber only. Used sparingly. */
-  --accent:       #F59E0B;
-  --accent-hover: #D97706;
-  --accent-light: #FBB83F;
-  --accent-dim:   rgba(245,158,11,0.08);
-  --accent-glow:  rgba(245,158,11,0.15);
+  /* Accent — electric data-viz blue. Used sparingly. */
+  --accent:       #2D7EFF;
+  --accent-hover: #1E63D6;
+  --accent-light: #5C9BFF;
+  --accent-dim:   rgba(45,126,255,0.10);
+  --accent-glow:  rgba(45,126,255,0.16);
 
-  /* Semantic */
-  --success:     #22c55e;
+  /* Semantic — red strictly losses/alerts, green strictly wins/up */
+  --success:     #22C55E;
   --success-dim: rgba(34,197,94,0.08);
-  --warning:     #f59e0b;
-  --warning-dim: rgba(245,158,11,0.08);
-  --danger:      #ef4444;
-  --danger-dim:  rgba(239,68,68,0.08);
-  --info:        #0ea5e9;
-  --info-dim:    rgba(14,165,233,0.08);
-  --purple:      #888888;
-  --purple-dim:  rgba(136,136,136,0.08);
+  --warning:     #2D7EFF;
+  --warning-dim: rgba(45,126,255,0.08);
+  --danger:      #E8364A;
+  --danger-dim:  rgba(232,54,74,0.08);
+  --info:        #2D7EFF;
+  --info-dim:    rgba(45,126,255,0.08);
+  --purple:      #8A94A6;
+  --purple-dim:  rgba(138,148,166,0.08);
 
   /* Sport accent colors */
   --sport-nfl:     #2563eb;
@@ -60,7 +60,7 @@
   --shadow-sm:   0 1px 4px rgba(0,0,0,0.7);
   --shadow-md:   0 4px 20px rgba(0,0,0,0.6);
   --shadow-lg:   0 16px 48px rgba(0,0,0,0.7);
-  --shadow-glow: 0 0 20px rgba(245,158,11,0.12);
+  --shadow-glow: 0 0 20px rgba(45,126,255,0.12);
 
   /* Radii */
   --r-xs: 3px;
@@ -85,16 +85,19 @@
   --green: var(--success);
   --border-muted: var(--border-subtle);
 
-  /* Fonts */
-  --font-display: var(--font-barlow-condensed), 'Barlow Condensed', sans-serif;
-  --font-body:    var(--font-barlow), 'Barlow', system-ui, sans-serif;
+  /* Fonts — Inter for UI, Space Grotesk for identity moments, JetBrains Mono for data */
+  --font-display: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
+  --font-body:    var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-data:    var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
+  /* Legacy alias — some components reference the old mono var */
+  --font-geist-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-barlow), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 /* ─── Reset / base ──────────────────────────────────────────── */
@@ -129,11 +132,11 @@ body {
 /* Labels: all-caps, wide tracking, muted — the workhorse label style */
 .text-label    { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
 .text-label-sm { font-size: 0.5rem;   font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); }
-/* Numbers/scores: Barlow Condensed for maximum size contrast */
-.text-number  { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-weight: 700; }
-.text-mono    { font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-.text-mono-sm { font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
-.text-score   { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: -0.01em; }
+/* Numbers/scores: JetBrains Mono — all numeric data is monospace */
+.text-number  { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-weight: 700; }
+.text-mono    { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.text-mono-sm { font-family: var(--font-data); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.text-score   { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.02em; }
 
 /* ─── Surface classes ───────────────────────────────────────── */
 .card         { background: var(--bg-card);     border: 1px solid var(--border-default); border-radius: var(--r-lg); }
@@ -535,16 +538,121 @@ body {
 /* ─── Featured pick card — the ONE element that gets elevation ── */
 .featured-pick {
   background: var(--bg-card);
-  border: 1px solid var(--border-accent);
+  border: 1px solid var(--border-default);
+  border-left: 4px solid var(--accent);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-glow);
   position: relative;
   overflow: hidden;
 }
-.featured-pick::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: var(--accent);
+
+/* ─── Hero accuracy strip ───────────────────────────────────── */
+.hero-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 2rem 1.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+.hero-number {
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 9vw, 6rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #F0F2F5 30%, #2D7EFF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.hero-sub {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-secondary);
+  margin-top: 0.625rem;
+}
+
+/* ─── Live ticker strip ─────────────────────────────────────── */
+.ticker-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  background: #060B14;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  margin-bottom: 1.25rem;
+}
+.ticker-strip::-webkit-scrollbar { display: none; }
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.875rem;
+  border-right: 1px solid var(--border-subtle);
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.ticker-item:hover { background: var(--bg-elevated); }
+.ticker-score {
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  animation: livePulseSoft 1.5s ease-in-out infinite;
+}
+@keyframes livePulseSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+/* ─── Pick cards ────────────────────────────────────────────── */
+.pick-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.pick-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+/* ─── Confidence bar (animated fill) ────────────────────────── */
+@keyframes confFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.conf-bar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.conf-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transform-origin: left center;
+  animation: confFill 0.3s ease-out backwards;
+}
+
+/* ─── Hero count-up ─────────────────────────────────────────── */
+@keyframes heroIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.hero-in { animation: heroIn 0.6s ease-out backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .conf-bar-fill, .hero-in, .ticker-score { animation: none; }
+  .pick-card:hover { transform: none; }
 }

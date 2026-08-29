@@ -1,55 +1,105 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { getUpcomingGames, getAccuracyStats } from '@/lib/api';
 import { getRecentPredictions, getTrendingTeams } from '@/lib/dashboardData';
-import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { LiveDashboardMarket } from '@/components/finance/LiveDashboardMarket';
 import { getMarketOverview } from '@/lib/finance/providers/yahoo';
-import {
-  ChevronRight, TrendingUp, Target, Zap, Brain,
-  Check, X,
-} from 'lucide-react';
-
+import { ChevronRight, ChevronDown, Check, X } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Dashboard — EdgeAI' };
 export const revalidate = 60;
 
 const SPORT_COLOR: Record<string, string> = {
-  NFL: '#2563eb', NBA: '#ea580c', MLB: '#16a34a', NHL: '#0ea5e9',
-  Soccer: '#10b981', 'NCAA Football': '#e05c1a', 'NCAA Basketball': '#f59e0b',
-  UFC: '#dc2626', Boxing: '#b91c1c', Tennis: '#ca8a04', 'Formula 1': '#dc2626',
-  Cricket: '#059669', Esports: '#6366f1',
+  NFL: '#22C55E', NBA: '#EA580C', MLB: '#16A34A', NHL: '#2D7EFF',
+  Soccer: '#10B981', 'NCAA Football': '#E05C1A', 'NCAA Basketball': '#D97706',
+  UFC: '#E8364A', Boxing: '#B91C1C', Tennis: '#CA8A04', 'Formula 1': '#E8364A',
+  Cricket: '#059669', Esports: '#6366F1',
 };
 
 function isFinal(s: string) { return s === 'Final' || s === 'Final/OT' || s === 'Final/SO'; }
 function isLive(s: string) { return s === 'Live' || s === 'Halftime' || s === 'Pregame'; }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return 'just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function fmtTime(g: { scheduledAt?: string; time: string }): string {
+  return g.scheduledAt
+    ? new Date(g.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })
+    : g.time;
 }
 
-// Inline mini sparkline bar — kills the "number + arrow" pattern
-function MomentumBar({ value, direction }: { value: number; direction: 'hot' | 'cold' }) {
-  const color = direction === 'hot' ? '#22c55e' : '#ef4444';
-  const segments = 8;
-  const filled = Math.round((value / 100) * segments);
+// Confidence color tiers: 75%+ blue, 65-74% slate, below muted
+function confBarColor(conf: number): string {
+  if (conf >= 75) return 'var(--accent)';
+  if (conf >= 65) return 'var(--text-secondary)';
+  return 'var(--text-muted)';
+}
+
+// ── Circular confidence gauge (SVG) ──────────────────────────────────────────
+
+function ConfidenceGauge({ value, size = 84 }: { value: number; size?: number }) {
+  const r = (size - 10) / 2;
+  const c = 2 * Math.PI * r;
+  const filled = (value / 100) * c;
   return (
-    <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-      {Array.from({ length: segments }, (_, i) => (
-        <div key={i} style={{
-          width: 3, height: i < filled ? 10 : 5,
-          borderRadius: 1,
-          background: i < filled ? color : 'var(--border-default)',
-          opacity: i < filled ? (0.4 + (i / segments) * 0.6) : 1,
-          transition: 'height 0.2s',
-        }} />
-      ))}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${value}% confidence`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-elevated)" strokeWidth={6} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="var(--accent)" strokeWidth={6} strokeLinecap="round"
+        strokeDasharray={`${filled} ${c - filled}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text
+        x="50%" y="50%" dominantBaseline="central" textAnchor="middle"
+        style={{ fontFamily: 'var(--font-data)', fontSize: size * 0.24, fontWeight: 700, fill: 'var(--text-primary)' }}
+      >
+        {value}%
+      </text>
+    </svg>
+  );
+}
+
+// ── 30-day trend sparkline ────────────────────────────────────────────────────
+
+function TrendSparkline({ allTime, last30 }: { allTime: number; last30: number }) {
+  // Simple monotone rise from the all-time baseline to the 30-day figure
+  const w = 180, h = 56;
+  const lo = Math.min(allTime, last30) - 1.5;
+  const hi = Math.max(allTime, last30) + 1.5;
+  const y = (v: number) => h - ((v - lo) / (hi - lo)) * (h - 12) - 6;
+  const midY = (y(allTime) + y(last30)) / 2;
+  const path = `M 4 ${y(allTime)} C ${w * 0.4} ${y(allTime)}, ${w * 0.55} ${midY}, ${w - 8} ${y(last30)}`;
+  const up = last30 >= allTime;
+  return (
+    <div style={{ textAlign: 'right' }}>
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`30-day accuracy trend: ${last30}%`}>
+        <path d={path} fill="none" stroke={up ? 'var(--success)' : 'var(--danger)'} strokeWidth={2} strokeLinecap="round" />
+        <circle cx={w - 8} cy={y(last30)} r={3.5} fill={up ? 'var(--success)' : 'var(--danger)'} />
+      </svg>
+      <div style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>
+        Last 30 days{' '}
+        <span style={{ fontFamily: 'var(--font-data)', color: up ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
+          {last30.toFixed(1)}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Section header ────────────────────────────────────────────────────────────
+
+function SectionHead({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.75rem' }}>
+      <h2 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+        {title}
+      </h2>
+      {href && (
+        <Link href={href} style={{
+          marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--text-secondary)',
+          textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem',
+        }}>
+          {linkLabel ?? 'View all'} <ChevronRight size={11} />
+        </Link>
+      )}
     </div>
   );
 }
@@ -61,10 +111,8 @@ export default async function HomePage() {
   ]);
 
   const recentPredictions = getRecentPredictions(7);
-  const trendingTeams = getTrendingTeams(6);
-
+  const trendingTeams = getTrendingTeams(8);
   const marketOverview = overviewRes;
-
 
   const liveGames = games.filter(g => isLive(g.status));
   const upcomingToday = games
@@ -80,423 +128,235 @@ export default async function HomePage() {
     .sort((a, b) => b.prediction.upsetProbability - a.prediction.upsetProbability)
     .slice(0, 5);
 
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', month: 'short', day: 'numeric', timeZone: 'America/New_York',
-  });
+  // One factual line of model reasoning for the featured pick
+  const featuredReason = featuredPick?.prediction.factors?.[0]?.detail ?? null;
 
   return (
     <div style={{ maxWidth: '80rem', margin: '0 auto' }} className="anim-fade-in">
 
-      {/* ── Command Bar ──────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: '0.75rem',
-        paddingBottom: '1rem', marginBottom: '1.25rem',
-        borderBottom: '1px solid var(--border-default)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
-          <h1 style={{
-            fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 800,
-            letterSpacing: '0.01em', textTransform: 'uppercase', color: 'var(--text-primary)',
-          }}>
-            Sports Intelligence
-          </h1>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>{today}</span>
-          {liveGames.length > 0 && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.3125rem',
-              fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
-              padding: '0.1875rem 0.5625rem', borderRadius: 3,
-              background: 'rgba(239,68,68,0.08)', color: '#ef4444',
-              border: '1px solid rgba(239,68,68,0.18)',
-            }}>
-              <span className="live-dot-sm" />{liveGames.length} Live
-            </span>
-          )}
-        </div>
-        <Link href="/games" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-          padding: '0.375rem 0.875rem', borderRadius: 'var(--r-md)',
-          background: 'var(--accent)', color: '#000',
-          fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none',
-          letterSpacing: '0.02em',
-        }}>
-          <Zap size={12} />All Games
-        </Link>
-      </div>
-
-      {/* ── Model Metrics Bar — Accuracy gets distinct hero treatment ── */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
-        background: 'var(--bg-card)', border: '1px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)', overflow: 'hidden', marginBottom: '1.5rem',
-      }}>
-        {/* Accuracy — the single featured metric, wider treatment */}
-        <div style={{
-          gridColumn: '1 / 2', padding: '1rem 1.25rem',
-          borderRight: '1px solid var(--border-default)',
-          borderLeft: '3px solid var(--accent)',
-          background: 'rgba(245,158,11,0.04)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.375rem' }}>
-            <Target size={10} color="var(--accent)" />
-            <span className="text-label" style={{ color: 'var(--accent)', opacity: 0.8 }}>Accuracy</span>
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 800,
-            lineHeight: 1, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums',
-          }}>
-            <AnimatedCounter value={accuracy.overall} decimals={1} suffix="%" />
-          </div>
-          <div style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.3125rem' }}>All-time</div>
-        </div>
-
-        {[
-          { label: 'Last 30 Days', value: accuracy.last30Days, suffix: '%', decimals: 1, Icon: TrendingUp, sub: '+2.8% trend' },
-          { label: 'Predictions',  value: accuracy.totalPredictions, suffix: '', decimals: 0, Icon: Brain, sub: '13 sports' },
-          { label: 'ROC AUC',      value: accuracy.rocAuc, suffix: '', decimals: 3, Icon: Zap, sub: `Brier ${accuracy.brierScore}` },
-        ].map(({ label, value, suffix, decimals, Icon, sub }, i, arr) => (
-          <div key={label} style={{
-            padding: '1rem 1.25rem',
-            borderRight: i < arr.length - 1 ? '1px solid var(--border-default)' : undefined,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.375rem' }}>
-              <Icon size={10} color="var(--text-muted)" />
-              <span className="text-label">{label}</span>
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '1.625rem', fontWeight: 700,
-              lineHeight: 1, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums',
-            }}>
-              <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />
-            </div>
-            {sub && <div style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.3125rem' }}>{sub}</div>}
-          </div>
-        ))}
-      </div>
-
-      {/* ── Live Games Ribbon ─────────────────────────────────────── */}
+      {/* ── Live ticker — slim network-style strip at the very top ── */}
       {liveGames.length > 0 && (
-        <section style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-            <span className="live-dot" />
-            <span className="text-label" style={{ color: '#ef4444' }}>Live Now</span>
-            <Link href="/games" style={{
-              marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--text-muted)',
-              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem',
-            }}>
-              All games <ChevronRight size={11} />
+        <div className="ticker-strip">
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: '0.375rem',
+            padding: '0.4375rem 0.875rem', flexShrink: 0,
+            borderRight: '1px solid var(--border-subtle)',
+            fontSize: '0.5625rem', fontWeight: 700, letterSpacing: '0.14em',
+            textTransform: 'uppercase', color: 'var(--danger)',
+          }}>
+            <span className="live-dot-sm" />Live
+          </span>
+          {liveGames.map(g => (
+            <Link key={g.id} href={`/game/${g.id}`} className="ticker-item">
+              <span style={{ fontSize: '0.5625rem', fontWeight: 700, letterSpacing: '0.08em', color: SPORT_COLOR[g.sport] ?? 'var(--text-secondary)' }}>
+                {g.league}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{g.homeTeam.abbreviation}</span>
+              <span className="ticker-score">{g.homeScore ?? 0}–{g.awayScore ?? 0}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{g.awayTeam.abbreviation}</span>
+              {g.clock && (
+                <span style={{ fontSize: '0.625rem', fontFamily: 'var(--font-data)', color: 'var(--text-muted)' }}>
+                  {g.clock}{g.period ? ` P${g.period}` : ''}
+                </span>
+              )}
             </Link>
-          </div>
-          <div className="scroll-ribbon">
-            {liveGames.map(g => {
-              const homeLeads = (g.homeScore ?? 0) > (g.awayScore ?? 0);
-              const awayLeads = (g.awayScore ?? 0) > (g.homeScore ?? 0);
-              return (
-                <Link key={g.id} href={`/game/${g.id}`} style={{
-                  display: 'flex', flexDirection: 'column', gap: '0.5rem',
-                  padding: '0.875rem', minWidth: '196px', flexShrink: 0,
-                  background: 'var(--bg-card)', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: 'var(--r-lg)', textDecoration: 'none', color: 'inherit',
-                  position: 'relative', overflow: 'hidden',
-                }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#ef4444' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase',
-                      letterSpacing: '0.1em', color: SPORT_COLOR[g.sport] ?? 'var(--text-muted)',
-                    }}>{g.league}</span>
-                    <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: '#ef4444', letterSpacing: '0.05em' }}>
-                      {g.clock ? g.clock : 'LIVE'}{g.period ? ` P${g.period}` : ''}
-                    </span>
-                  </div>
-                  {[
-                    { team: g.homeTeam, score: g.homeScore, leads: homeLeads },
-                    { team: g.awayTeam, score: g.awayScore, leads: awayLeads },
-                  ].map(({ team, score, leads }) => (
-                    <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: team.color, display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{
-                        fontSize: '0.8125rem', fontWeight: leads ? 600 : 400, flex: 1,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        color: leads ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      }}>{team.abbreviation}</span>
-                      <span style={{
-                        fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 800,
-                        fontVariantNumeric: 'tabular-nums', color: leads ? team.color : 'var(--text-primary)',
-                      }}>{score ?? 0}</span>
-                    </div>
-                  ))}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+          ))}
+        </div>
       )}
 
-      {/* ── Command Grid: main + sidebar ─────────────────────────── */}
+      {/* ── Hero — the accuracy number IS the value proposition ── */}
+      <div className="hero-strip hero-in" style={{ marginBottom: '1.5rem' }}>
+        <div>
+          <div className="hero-number">{accuracy.overall.toFixed(1)}%</div>
+          <div className="hero-sub">
+            All-time accuracy · {accuracy.totalPredictions.toLocaleString()} predictions · {Object.keys(SPORT_COLOR).length} sports
+          </div>
+        </div>
+        <TrendSparkline allTime={accuracy.overall} last30={accuracy.last30Days} />
+      </div>
+
+      {/* ── Main grid ── */}
       <div className="command-grid">
 
-        {/* ── Main Column ──────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+        {/* ── Main column ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', minWidth: 0 }}>
 
-          {/* Featured Top Pick — visually distinct, not a grid tile */}
+          {/* Best Bet Today */}
           {featuredPick && (
             <section>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-                <span className="text-label">Top Pick Today</span>
-                <span style={{
-                  fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
-                  padding: '0.1rem 0.4rem', borderRadius: 2,
-                  background: 'rgba(245,158,11,0.1)', color: 'var(--accent)',
-                  border: '1px solid rgba(245,158,11,0.2)',
-                }}>Highest confidence</span>
-              </div>
+              <SectionHead title="Best bet today" />
               <Link href={`/game/${featuredPick.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                 <div className="featured-pick" style={{ padding: '1.25rem 1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                    {/* Teams */}
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: SPORT_COLOR[featuredPick.sport] ?? 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.25rem', flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
+                        <span style={{ fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: SPORT_COLOR[featuredPick.sport] ?? 'var(--text-secondary)' }}>
                           {featuredPick.league}
                         </span>
-                        <span style={{ fontSize: '0.5625rem', color: 'var(--text-muted)' }}>
-                          {featuredPick.scheduledAt
-                            ? new Date(featuredPick.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })
-                            : featuredPick.time} ET
+                        <span style={{ fontSize: '0.625rem', fontFamily: 'var(--font-data)', color: 'var(--text-secondary)' }}>
+                          {fmtTime(featuredPick)} ET
                         </span>
                       </div>
                       <div style={{
-                        fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800,
-                        color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '0.01em',
+                        fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 700,
+                        color: 'var(--text-primary)', lineHeight: 1.1, letterSpacing: '-0.01em',
                       }}>
-                        {featuredPick.homeTeam.abbreviation}
-                        <span style={{ color: 'var(--text-muted)', margin: '0 0.5rem', fontWeight: 400 }}>vs</span>
-                        {featuredPick.awayTeam.abbreviation}
+                        {featuredPick.homeTeam.name}
+                        <span style={{ color: 'var(--text-muted)', margin: '0 0.625rem', fontWeight: 500, fontSize: '1.125rem' }}>vs</span>
+                        {featuredPick.awayTeam.name}
                       </div>
-                      <div style={{ marginTop: '0.375rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {featuredPick.homeTeam.name} · {featuredPick.homeTeam.record} vs {featuredPick.awayTeam.record}
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
+                        Pick:{' '}
+                        <strong style={{ fontWeight: 700 }}>
+                          {featuredPick.prediction.winner}
+                        </strong>
                       </div>
+                      {featuredReason && (
+                        <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5, maxWidth: '34rem' }}>
+                          {featuredReason}
+                        </p>
+                      )}
                     </div>
-
-                    {/* Pick */}
-                    <div style={{ textAlign: 'right' }}>
-                      <div className="text-label" style={{ marginBottom: '0.3rem' }}>Model pick</div>
-                      <div style={{
-                        fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 800,
-                        color: featuredPick.prediction.winner === featuredPick.homeTeam.name
-                          ? featuredPick.homeTeam.color : featuredPick.awayTeam.color,
-                        lineHeight: 1,
-                      }}>
-                        {featuredPick.prediction.winner === featuredPick.homeTeam.name
-                          ? featuredPick.homeTeam.abbreviation : featuredPick.awayTeam.abbreviation}
-                      </div>
-                      <div style={{
-                        fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 800,
-                        color: 'var(--accent)', lineHeight: 1, marginTop: '0.125rem',
-                      }}>
-                        {featuredPick.prediction.confidence}%
-                      </div>
-                      <div className="text-label" style={{ marginTop: '0.25rem' }}>confidence</div>
-                    </div>
-                  </div>
-
-                  {/* Win probability bar */}
-                  <div style={{ marginTop: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
-                      <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                        {featuredPick.homeTeam.abbreviation} {(featuredPick.prediction.winner === featuredPick.homeTeam.name ? featuredPick.prediction.winProbability : 100 - featuredPick.prediction.winProbability).toFixed(0)}%
-                      </span>
-                      <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                        {(featuredPick.prediction.winner === featuredPick.awayTeam.name ? featuredPick.prediction.winProbability : 100 - featuredPick.prediction.winProbability).toFixed(0)}% {featuredPick.awayTeam.abbreviation}
-                      </span>
-                    </div>
-                    <div style={{ height: 4, borderRadius: 2, overflow: 'hidden', background: 'var(--bg-elevated)', display: 'flex' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${featuredPick.prediction.winner === featuredPick.homeTeam.name ? featuredPick.prediction.winProbability : 100 - featuredPick.prediction.winProbability}%`,
-                        background: featuredPick.homeTeam.color,
-                      }} />
-                      <div style={{ flex: 1, height: '100%', background: featuredPick.awayTeam.color }} />
-                    </div>
+                    <ConfidenceGauge value={featuredPick.prediction.confidence} />
                   </div>
                 </div>
               </Link>
             </section>
           )}
 
-          {/* Remaining Top Picks — compact table, no shadow */}
+          {/* Today's picks — cards, confidence bars, sorted desc */}
           {remainingPicks.length > 0 && (
             <section>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-                <span className="text-label">Today&apos;s Picks</span>
-                <Link href="/games" style={{
-                  marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--text-muted)',
-                  textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem',
-                }}>
-                  Full schedule <ChevronRight size={11} />
-                </Link>
-              </div>
-              <div style={{
-                background: 'var(--bg-card)', border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-lg)', overflow: 'hidden',
-              }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Matchup</th>
-                      <th style={{ textAlign: 'center' }}>Time</th>
-                      <th style={{ textAlign: 'center' }}>Pick</th>
-                      <th style={{ textAlign: 'right' }}>Conf.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {remainingPicks.map(g => {
-                      const winHome = g.prediction.winner === g.homeTeam.name;
-                      const conf = g.prediction.confidence;
-                      const confColor = conf >= 80 ? 'var(--success)' : conf >= 65 ? 'var(--accent)' : 'var(--text-muted)';
-                      const time = g.scheduledAt
-                        ? new Date(g.scheduledAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })
-                        : g.time;
-                      return (
-                        <tr key={g.id}>
-                          <td>
-                            <Link href={`/game/${g.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                              <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                                {g.homeTeam.abbreviation} vs {g.awayTeam.abbreviation}
-                              </span>
-                              <div style={{ fontSize: '0.5625rem', color: SPORT_COLOR[g.sport] ?? 'var(--text-muted)', marginTop: '0.1rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                                {g.league}
-                              </div>
-                            </Link>
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{time}</span>
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <Link href={`/game/${g.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
-                              <span style={{ fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-                                {winHome ? g.homeTeam.abbreviation : g.awayTeam.abbreviation}
-                              </span>
-                              <div style={{ width: 48, height: 2, borderRadius: 1, background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${g.prediction.winProbability}%`, background: winHome ? g.homeTeam.color : g.awayTeam.color }} />
-                              </div>
-                            </Link>
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <span style={{
-                              fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 700,
-                              fontVariantNumeric: 'tabular-nums', color: confColor,
-                            }}>
-                              {conf}%
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <SectionHead title="Today's picks" href="/games" linkLabel="Full schedule" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {remainingPicks.map((g, i) => {
+                  const winHome = g.prediction.winner === g.homeTeam.name;
+                  const conf = g.prediction.confidence;
+                  const barColor = confBarColor(conf);
+                  return (
+                    <Link key={g.id} href={`/game/${g.id}`} className="pick-card">
+                      {/* Logos */}
+                      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        {[g.homeTeam, g.awayTeam].map((t, j) => (
+                          t.logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={t.id} src={t.logo} alt={t.abbreviation}
+                              width={26} height={26} loading="lazy"
+                              style={{ borderRadius: '50%', background: 'var(--bg-elevated)', marginLeft: j > 0 ? -6 : 0, border: '2px solid var(--bg-card)' }}
+                            />
+                          ) : (
+                            <span key={t.id} style={{
+                              width: 26, height: 26, borderRadius: '50%', background: `${t.color}30`,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.5rem', fontWeight: 800, color: t.color,
+                              marginLeft: j > 0 ? -6 : 0, border: '2px solid var(--bg-card)',
+                            }}>{t.abbreviation.slice(0, 2)}</span>
+                          )
+                        ))}
+                      </div>
+
+                      {/* Matchup + time */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {g.homeTeam.abbreviation} vs {g.awayTeam.abbreviation}
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '0.5rem', fontSize: '0.6875rem' }}>
+                            {g.league}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-data)', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
+                          {fmtTime(g)} ET · pick {winHome ? g.homeTeam.abbreviation : g.awayTeam.abbreviation}
+                        </div>
+                      </div>
+
+                      {/* Confidence bar + number */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0, width: 148 }}>
+                        <div className="conf-bar-track" style={{ flex: 1 }}>
+                          <div
+                            className="conf-bar-fill"
+                            style={{ width: `${conf}%`, background: barColor, animationDelay: `${i * 50}ms` }}
+                          />
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-data)', fontSize: '0.8125rem', fontWeight: 700, color: barColor, width: 38, textAlign: 'right' }}>
+                          {conf}%
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}
 
-          {/* Model Accuracy by Sport */}
+          {/* Accuracy by sport — horizontal bar chart */}
           <section>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-              <span className="text-label">Model Accuracy by Sport</span>
-              <Link href="/accuracy" style={{
-                marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--text-muted)',
-                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem',
-              }}>
-                Calibration <ChevronRight size={11} />
-              </Link>
-            </div>
-            <div style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-lg)', overflow: 'hidden',
-            }}>
+            <SectionHead title="Accuracy by sport" href="/accuracy" linkLabel="Full metrics" />
+            <div className="card" style={{ padding: '0.5rem 0' }}>
               {Object.entries(accuracy.bySport)
                 .sort(([, a], [, b]) => b - a)
-                .map(([sport, acc], i, arr) => (
-                  <div key={sport} style={{
-                    display: 'grid', gridTemplateColumns: '6rem 1fr 2.5rem',
-                    alignItems: 'center', gap: '0.875rem',
-                    padding: '0.5625rem 1rem',
-                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 1, background: SPORT_COLOR[sport] ?? 'var(--text-muted)', display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{sport}</span>
-                    </div>
-                    <div style={{ height: 3, borderRadius: 1, overflow: 'hidden', background: 'var(--bg-elevated)' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 1, width: `${acc}%`,
-                        background: acc >= 70 ? 'var(--success)' : acc >= 65 ? 'var(--accent)' : 'var(--danger)',
-                      }} />
-                    </div>
-                    <span style={{
-                      fontFamily: 'var(--font-display)', fontSize: '0.9375rem', fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)', textAlign: 'right',
+                .map(([sport, acc], i) => {
+                  const barColor = acc > 70 ? 'var(--accent)' : acc >= 65 ? 'var(--text-secondary)' : 'var(--text-muted)';
+                  return (
+                    <div key={sport} style={{
+                      display: 'grid', gridTemplateColumns: '8.5rem 1fr 3.25rem',
+                      alignItems: 'center', gap: '0.875rem',
+                      padding: '0.5rem 1.125rem',
                     }}>
-                      {acc}%
-                    </span>
-                  </div>
-                ))}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 500 }}>{sport}</span>
+                      <div className="conf-bar-track" style={{ height: 8 }}>
+                        <div
+                          className="conf-bar-fill"
+                          style={{ width: `${acc}%`, background: barColor, animationDelay: `${i * 50}ms` }}
+                        />
+                      </div>
+                      <span style={{ fontFamily: 'var(--font-data)', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', textAlign: 'right' }}>
+                        {acc.toFixed(1)}%
+                      </span>
+                    </div>
+                  );
+                })}
             </div>
           </section>
 
-          {/* Recent Predictions — real resolved history, newest first */}
+          {/* Recent predictions — outcomes owned, losses visible */}
           <section>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-              <span className="text-label">Recent Predictions</span>
-              <Link href="/history" style={{
-                marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--text-muted)',
-                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem',
-              }}>
-                History <ChevronRight size={11} />
-              </Link>
-            </div>
-            <div style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-lg)', overflow: 'hidden',
-            }}>
+            <SectionHead title="Recent predictions" href="/history" linkLabel="History" />
+            <div className="card" style={{ overflow: 'hidden' }}>
               {recentPredictions.map((item, i, arr) => {
                 const correct = item.correct;
-                const resColor = correct ? '#22c55e' : '#ef4444';
-                const resBg = correct ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)';
+                const resColor = correct ? 'var(--success)' : 'var(--danger)';
+                const sportColor = SPORT_COLOR[item.sport] ?? 'var(--text-secondary)';
                 return (
                   <div key={item.id} style={{
                     display: 'flex', alignItems: 'center', gap: '0.75rem',
-                    padding: '0.625rem 1rem',
+                    padding: '0.625rem 1.125rem',
                     borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                   }}>
-                    {/* Correct / wrong indicator */}
-                    <div style={{
-                      width: 26, height: 26, borderRadius: 'var(--r-sm)', flexShrink: 0,
-                      background: resBg, border: `1px solid ${resColor}22`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {correct
-                        ? <Check size={12} color={resColor} strokeWidth={2.5} />
-                        : <X    size={12} color={resColor} strokeWidth={2.5} />}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.homeTeam} vs {item.awayTeam}
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {item.score}</span>
-                      </p>
-                      <p style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        {item.sport} · Picked {item.prediction} · {timeAgo(new Date(item.date).toISOString())}
-                      </p>
-                    </div>
                     <span style={{
-                      fontFamily: 'var(--font-display)', fontSize: '0.875rem', fontWeight: 700,
-                      padding: '0.125rem 0.4375rem', borderRadius: 3,
-                      background: resBg, color: resColor,
+                      fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      padding: '0.1875rem 0.5rem', borderRadius: 100, flexShrink: 0,
+                      background: `color-mix(in srgb, ${sportColor} 14%, transparent)`,
+                      color: sportColor,
                     }}>
+                      {item.sport}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {item.homeTeam} vs {item.awayTeam}
+                      </span>
+                      <span style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-data)', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                        {item.score}
+                      </span>
+                      <div style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
+                        Picked {item.prediction}
+                      </div>
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-data)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', flexShrink: 0 }}>
                       {item.confidence}%
                     </span>
+                    {correct
+                      ? <Check size={15} color="var(--success)" strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                      : <X size={15} color="var(--danger)" strokeWidth={2.5} style={{ flexShrink: 0 }} />}
                   </div>
                 );
               })}
@@ -504,43 +364,31 @@ export default async function HomePage() {
           </section>
         </div>
 
-        {/* ── Sidebar Column ────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* ── Sidebar column ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
 
-          {/* Upset Alerts — Zap icon, amber border */}
+          {/* Upset alerts — urgent, red-bordered */}
           {upsetAlerts.length > 0 && (
             <section>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.625rem' }}>
-                <Zap size={10} color="var(--accent)" />
-                <span className="text-label" style={{ color: 'var(--accent)', opacity: 0.8 }}>Upset Alerts</span>
-              </div>
-              <div style={{
-                background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.15)',
-                borderRadius: 'var(--r-lg)', overflow: 'hidden',
-              }}>
-                {upsetAlerts.map((g, i, arr) => {
+              <SectionHead title="Upset alerts" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {upsetAlerts.map(g => {
                   const underdog = g.prediction.winner === g.homeTeam.name ? g.awayTeam : g.homeTeam;
                   return (
-                    <Link key={g.id} href={`/game/${g.id}`} style={{
-                      display: 'flex', flexDirection: 'column', gap: '0.25rem',
-                      padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit',
-                      borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                      transition: 'background 0.1s',
+                    <Link key={g.id} href={`/game/${g.id}`} className="pick-card" style={{
+                      borderLeft: '3px solid var(--danger)',
+                      padding: '0.625rem 0.875rem',
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text-primary)', letterSpacing: '0.01em' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {g.homeTeam.abbreviation} vs {g.awayTeam.abbreviation}
-                        </span>
-                        <span style={{
-                          fontFamily: 'var(--font-display)', fontSize: '0.875rem', fontWeight: 700,
-                          padding: '0.125rem 0.375rem', borderRadius: 2,
-                          background: 'rgba(245,158,11,0.1)', color: 'var(--accent)',
-                        }}>
-                          {g.prediction.upsetProbability}%
-                        </span>
+                        </div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
+                          {underdog.abbreviation} live · {g.league}
+                        </div>
                       </div>
-                      <span style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        {underdog.abbreviation} upset chance · {g.league}
+                      <span style={{ fontFamily: 'var(--font-data)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--danger)', flexShrink: 0 }}>
+                        {g.prediction.upsetProbability}%
                       </span>
                     </Link>
                   );
@@ -549,93 +397,59 @@ export default async function HomePage() {
             </section>
           )}
 
-          {/* Trending Teams — sparkline bars instead of number+arrow */}
+          {/* Trending teams — horizontal pill row */}
           <section>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-              <span className="text-label">Trending Teams</span>
-            </div>
-            <div style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-lg)', overflow: 'hidden',
-            }}>
-              {trendingTeams.map((t, i, arr) => (
-                <div key={t.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.625rem 1rem',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                }}>
-                  {/* Team swatch */}
-                  <div style={{
-                    width: 26, height: 26, borderRadius: 'var(--r-sm)',
-                    background: `${t.color ?? '#888'}18`,
-                    border: `1px solid ${t.color ?? '#888'}30`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            <SectionHead title="Trending teams" />
+            <div className="scroll-ribbon" style={{ flexWrap: 'wrap', gap: '0.4375rem' }}>
+              {trendingTeams.map(t => {
+                const up = t.direction === 'hot';
+                return (
+                  <span key={t.id} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.4375rem',
+                    padding: '0.375rem 0.75rem', borderRadius: 100,
+                    background: 'var(--bg-card)', border: '1px solid var(--border-default)',
+                    whiteSpace: 'nowrap',
                   }}>
-                    <span style={{ fontSize: '0.5rem', fontWeight: 800, color: t.color ?? 'var(--text-muted)', letterSpacing: '0.03em' }}>
-                      {t.abbreviation?.slice(0, 3)}
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: t.color ?? 'var(--text-primary)' }}>
+                      {t.abbreviation}
                     </span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.name}
-                    </p>
-                    <p style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.125rem' }}>
-                      {t.streak} · {t.sport}
-                    </p>
-                  </div>
-                  {/* Sparkline bar instead of number + arrow */}
-                  {t.momentum !== undefined && (
-                    <MomentumBar value={t.momentum} direction={t.direction} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Quick Navigation — varied widths, no uniform grid */}
-          <section>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.625rem' }}>
-              <span className="text-label">Quick Access</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-              {[
-                { href: '/accuracy',    label: 'Accuracy',    sub: 'Model metrics',     color: 'var(--success)', wide: true },
-                { href: '/prizepicks', label: 'PrizePicks +EV', sub: 'Line comparison · no-vig odds', color: '#f59e0b', wide: true },
-                { href: '/matchup',   label: 'Matchup',   sub: 'Compare teams',     color: 'var(--accent)' },
-                { href: '/games',     label: 'Games',     sub: `${games.length} fixtures`, color: 'var(--info)' },
-                { href: '/history',   label: 'History',   sub: 'Prediction log',    color: 'var(--text-muted)' },
-              ].map(({ href, label, sub, color, wide }) => (
-                <Link key={href} href={href} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: wide ? '0.875rem 1rem' : '0.625rem 1rem',
-                  background: 'var(--bg-card)', border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--r-md)', textDecoration: 'none',
-                  transition: 'background 0.1s, border-color 0.1s',
-                  borderLeft: wide ? `3px solid ${color}` : '1px solid var(--border-default)',
-                }}>
-                  <div>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>{label}</span>
-                    <span style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{sub}</span>
-                  </div>
-                  <ChevronRight size={13} style={{ color, flexShrink: 0 }} />
-                </Link>
-              ))}
+                    <span style={{ fontFamily: 'var(--font-data)', fontSize: '0.625rem', fontWeight: 700, color: up ? 'var(--success)' : 'var(--danger)' }}>
+                      {t.streak}
+                    </span>
+                    <span style={{ fontSize: '0.5625rem', color: 'var(--text-secondary)' }}>{t.sport}</span>
+                  </span>
+                );
+              })}
             </div>
           </section>
         </div>
       </div>
 
-      {/* ── Full-width Live Market Intelligence ─────────────────────── */}
-      <LiveDashboardMarket
-        initialIndices={marketOverview?.indices ?? []}
-        initialMarketState={marketOverview?.marketState ?? 'CLOSED'}
-        initialGainers={marketOverview?.gainers ?? []}
-        initialLosers={marketOverview?.losers ?? []}
-        initialActives={marketOverview?.actives ?? []}
-        initialSectors={marketOverview?.sectors ?? []}
-        initialWatchlist={[]}
-        initialNews={[]}
-      />
+      {/* ── Markets — below the fold, collapsed by default ── */}
+      <details style={{ marginTop: '2rem' }}>
+        <summary style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          cursor: 'pointer', listStyle: 'none',
+          padding: '0.75rem 1.125rem',
+          background: 'var(--bg-card)', border: '1px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)',
+        }}>
+          Market overview <ChevronDown size={14} style={{ color: 'var(--text-secondary)' }} />
+        </summary>
+        <div style={{ marginTop: '1rem' }}>
+          <LiveDashboardMarket
+            initialIndices={marketOverview?.indices ?? []}
+            initialMarketState={marketOverview?.marketState ?? 'CLOSED'}
+            initialGainers={marketOverview?.gainers ?? []}
+            initialLosers={marketOverview?.losers ?? []}
+            initialActives={marketOverview?.actives ?? []}
+            initialSectors={marketOverview?.sectors ?? []}
+            initialWatchlist={[]}
+            initialNews={[]}
+          />
+        </div>
+      </details>
     </div>
   );
 }

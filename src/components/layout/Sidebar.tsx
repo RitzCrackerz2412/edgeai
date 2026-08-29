@@ -1,56 +1,48 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutGrid, Shield, User, BarChart2, Search,
-  Settings, ChevronLeft, ChevronRight, X, Zap, History,
-  Activity, BrainCircuit, GitCompare, Trophy,
-  Globe, Swords, CalendarDays, SlidersHorizontal,
-  TrendingUp, Scan, Newspaper, PieChart, BookOpen,
+  Settings, ChevronLeft, ChevronRight, ChevronDown, X,
+  Activity, BrainCircuit, CalendarDays, SlidersHorizontal,
+  TrendingUp, BarChart2, LineChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PRIMARY_NAV = [
-  { href: '/',      label: 'Dashboard', Icon: LayoutGrid, exact: true },
-  { href: '/games', label: 'Games',     Icon: CalendarDays },
-  { href: '/team',  label: 'Teams',     Icon: Shield },
-  { href: '/player',label: 'Players',   Icon: User },
-  { href: '/search',label: 'Search',    Icon: Search },
+const SPORTS_ITEMS = [
+  { href: '/nba',     label: 'NBA' },
+  { href: '/mlb',     label: 'MLB' },
+  { href: '/nhl',     label: 'NHL' },
+  { href: '/soccer',  label: 'Soccer' },
+  { href: '/ncaaf',   label: 'NCAAF' },
+  { href: '/ncaab',   label: 'NCAAB' },
+  { href: '/ufc',     label: 'UFC' },
+  { href: '/boxing',  label: 'Boxing' },
+  { href: '/tennis',  label: 'Tennis' },
+  { href: '/f1',      label: 'Formula 1' },
+  { href: '/cricket', label: 'Cricket' },
+  { href: '/esports', label: 'Esports' },
 ];
 
-const ANALYSIS_NAV = [
-  { href: '/edge',             label: 'Edge Sheet',  Icon: Zap },
-  { href: '/accuracy',         label: 'Accuracy',    Icon: BarChart2 },
-  { href: '/history',          label: 'History',     Icon: History },
-  { href: '/matchup',          label: 'Matchup',     Icon: Swords },
-  { href: '/compare/teams',    label: 'Compare',     Icon: GitCompare },
-  { href: '/league/epl',       label: 'Leagues',     Icon: Globe },
-  { href: '/tournament/worldcup2026', label: 'Tournaments', Icon: Trophy },
-  { href: '/methodology',      label: 'Methodology', Icon: BookOpen },
+const ANALYSIS_ITEMS = [
+  { href: '/edge',           label: 'Edge Sheet' },
+  { href: '/history',        label: 'History' },
+  { href: '/matchup',        label: 'Matchup' },
+  { href: '/compare/teams',  label: 'Compare' },
+  { href: '/league/epl',     label: 'Leagues' },
+  { href: '/tournament/worldcup2026', label: 'Tournaments' },
+  { href: '/team',           label: 'Teams' },
+  { href: '/player',         label: 'Players' },
+  { href: '/methodology',    label: 'Methodology' },
 ];
 
-const SPORTS_NAV = [
-  { href: '/nba',     label: 'NBA',       color: '#ea580c' },
-  { href: '/mlb',     label: 'MLB',       color: '#16a34a' },
-  { href: '/nhl',     label: 'NHL',       color: '#0ea5e9' },
-  { href: '/soccer',  label: 'Soccer',    color: '#10b981' },
-  { href: '/ncaaf',   label: 'NCAAF',     color: '#7c3aed' },
-  { href: '/ncaab',   label: 'NCAAB',     color: '#f59e0b' },
-  { href: '/ufc',     label: 'UFC',       color: '#dc2626' },
-  { href: '/boxing',  label: 'Boxing',    color: '#b91c1c' },
-  { href: '/tennis',  label: 'Tennis',    color: '#ca8a04' },
-  { href: '/f1',      label: 'Formula 1', color: '#dc2626' },
-  { href: '/cricket', label: 'Cricket',   color: '#059669' },
-  { href: '/esports', label: 'Esports',   color: '#8b5cf6' },
-];
-
-const FINANCE_NAV = [
-  { href: '/finance',           label: 'Dashboard', Icon: TrendingUp },
-  { href: '/finance/markets',   label: 'Markets',   Icon: Activity },
-  { href: '/finance/scanner',   label: 'Scanner',   Icon: Scan },
-  { href: '/finance/portfolio', label: 'Portfolio', Icon: PieChart },
-  { href: '/finance/news',      label: 'News',      Icon: Newspaper },
+const FINANCE_ITEMS = [
+  { href: '/finance',           label: 'Overview' },
+  { href: '/finance/markets',   label: 'Markets' },
+  { href: '/finance/scanner',   label: 'Scanner' },
+  { href: '/finance/portfolio', label: 'Portfolio' },
+  { href: '/finance/news',      label: 'News' },
 ];
 
 const ADMIN_NAV = [
@@ -69,6 +61,14 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+
+  const sportsActive   = SPORTS_ITEMS.some(i => pathname.startsWith(i.href));
+  const analysisActive = ANALYSIS_ITEMS.some(i => pathname === i.href || pathname.startsWith(i.href + '/'));
+  const financeActive  = pathname.startsWith('/finance');
+
+  const [sportsOpen, setSportsOpen]     = useState(sportsActive);
+  const [analysisOpen, setAnalysisOpen] = useState(analysisActive);
+  const [financeOpen, setFinanceOpen]   = useState(financeActive);
 
   const active = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
@@ -97,28 +97,22 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
           borderRight: '1px solid var(--border-subtle)',
         }}
       >
-        {/* ── Logo ──────────────────────────────────────────────────── */}
+        {/* ── Wordmark ─────────────────────────────────────────────── */}
         <div
-          className="flex items-center gap-2.5 shrink-0"
-          style={{ height: 'var(--topbar-h)', padding: '0 0.875rem', borderBottom: '1px solid var(--border-subtle)' }}
+          className="flex items-center shrink-0"
+          style={{ height: 'var(--topbar-h)', padding: '0 1rem', borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <div style={{
-            width: 26, height: 26, borderRadius: 6,
-            background: 'var(--accent)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <Zap size={13} color="#fff" strokeWidth={2.5} />
-          </div>
-          {!collapsed && (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: '0.875rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1 }}>
-                EdgeAI
-              </p>
-              <p style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', marginTop: '0.1875rem', letterSpacing: '0.04em' }}>
-                Decision Intelligence
-              </p>
-            </div>
-          )}
+          <Link href="/" onClick={onClose} style={{ textDecoration: 'none' }}>
+            <span style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: collapsed ? '0.875rem' : '1.125rem',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              color: 'var(--text-primary)',
+            }}>
+              {collapsed ? 'E' : 'EdgeAI'}
+            </span>
+          </Link>
           <button
             className="ml-auto lg:hidden p-1 rounded"
             onClick={onClose}
@@ -129,114 +123,47 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
           </button>
         </div>
 
-        {/* ── Nav ───────────────────────────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto py-1.5 no-scrollbar" style={{ padding: '0.375rem 0.5rem' }}>
+        {/* ── Nav ──────────────────────────────────────────────────── */}
+        <nav className="flex-1 overflow-y-auto no-scrollbar" style={{ padding: '0.625rem 0.5rem' }}>
 
-          {/* Primary */}
-          <div style={{ marginBottom: '0.25rem' }}>
-            {PRIMARY_NAV.map(item => (
-              <NavItem key={item.href} {...item} isActive={active(item.href, item.exact)} collapsed={collapsed} onClick={onClose} />
-            ))}
-          </div>
+          <TopItem href="/games" label="Games" Icon={CalendarDays} isActive={active('/games')} collapsed={collapsed} onClick={onClose} />
 
-          {/* Analysis */}
-          {!collapsed && (
-            <p style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-muted)', padding: '0.625rem 0.625rem 0.25rem' }}>
-              Analysis
-            </p>
-          )}
-          {collapsed && <div style={{ margin: '0.375rem 0', height: 1, background: 'var(--border-subtle)' }} />}
-          <div style={{ marginBottom: '0.25rem' }}>
-            {ANALYSIS_NAV.map(item => (
-              <NavItem key={item.href} {...item} isActive={active(item.href)} collapsed={collapsed} onClick={onClose} />
-            ))}
-          </div>
+          <GroupItem
+            label="Sports" Icon={LineChart}
+            open={sportsOpen} setOpen={setSportsOpen}
+            groupActive={sportsActive} collapsed={collapsed}
+            items={SPORTS_ITEMS} pathname={pathname} onClose={onClose}
+          />
 
-          {/* Finance */}
-          {!collapsed && (
-            <p style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#10b981', padding: '0.625rem 0.625rem 0.25rem' }}>
-              Finance
-            </p>
-          )}
-          {collapsed && <div style={{ margin: '0.375rem 0', height: 1, background: 'var(--border-subtle)' }} />}
-          <div style={{ marginBottom: '0.25rem' }}>
-            {FINANCE_NAV.map(item => {
-              const isAct = active(item.href, item.href === '/finance');
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
-                  title={collapsed ? item.label : undefined}
-                  className={cn('flex items-center gap-2 rounded-md transition-all duration-150', collapsed ? 'h-8 w-8 justify-center mx-auto' : 'h-8 px-2')}
-                  style={{ background: isAct ? 'rgba(16,185,129,0.12)' : 'transparent', textDecoration: 'none' }}
-                  onMouseEnter={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
-                  onMouseLeave={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                >
-                  <item.Icon size={14} strokeWidth={isAct ? 2.5 : 1.75} style={{ flexShrink: 0, color: isAct ? '#10b981' : 'var(--text-muted)' }} />
-                  {!collapsed && (
-                    <span style={{ fontSize: '0.8125rem', fontWeight: isAct ? 600 : 400, color: isAct ? '#10b981' : 'var(--text-secondary)' }}>
-                      {item.label}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
+          <GroupItem
+            label="Analysis" Icon={BarChart2}
+            open={analysisOpen} setOpen={setAnalysisOpen}
+            groupActive={analysisActive} collapsed={collapsed}
+            items={ANALYSIS_ITEMS} pathname={pathname} onClose={onClose}
+          />
 
-          {/* Sports */}
-          {!collapsed && (
-            <p style={{ fontSize: '0.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-muted)', padding: '0.625rem 0.625rem 0.25rem' }}>
-              Sports
-            </p>
-          )}
-          {collapsed && <div style={{ margin: '0.375rem 0', height: 1, background: 'var(--border-subtle)' }} />}
-          <div>
-            {SPORTS_NAV.map(({ href, label, color }) => {
-              const isAct = active(href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={onClose}
-                  title={collapsed ? label : undefined}
-                  className={cn('flex items-center gap-2 rounded-md transition-all duration-150', collapsed ? 'h-8 w-8 justify-center mx-auto' : 'h-8 px-2')}
-                  style={{
-                    background: isAct ? `${color}15` : 'transparent',
-                    color: isAct ? color : 'var(--text-muted)',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
-                  onMouseLeave={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                >
-                  <span style={{
-                    width: 7, height: 7, borderRadius: 2,
-                    background: isAct ? color : 'var(--border-strong)',
-                    flexShrink: 0, display: 'inline-block',
-                    transition: 'background 0.15s',
-                  }} />
-                  {!collapsed && (
-                    <span style={{ fontSize: '0.8125rem', fontWeight: isAct ? 600 : 400, color: isAct ? color : 'var(--text-secondary)', transition: 'color 0.15s' }}>
-                      {label}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
+          <GroupItem
+            label="Finance" Icon={TrendingUp}
+            open={financeOpen} setOpen={setFinanceOpen}
+            groupActive={financeActive} collapsed={collapsed}
+            items={FINANCE_ITEMS} pathname={pathname} onClose={onClose}
+            exactRoot="/finance"
+          />
+
+          <TopItem href="/accuracy" label="Accuracy" Icon={BarChart2} isActive={active('/accuracy')} collapsed={collapsed} onClick={onClose} />
         </nav>
 
         {/* ── Divider ──────────────────────────────────────────────── */}
         <div style={{ margin: '0 0.75rem', height: 1, background: 'var(--border-subtle)' }} />
 
-        {/* ── Admin ─────────────────────────────────────────────────── */}
+        {/* ── Admin ────────────────────────────────────────────────── */}
         <div style={{ padding: '0.375rem 0.5rem' }}>
           {ADMIN_NAV.map(item => (
-            <NavItem key={item.href} {...item} isActive={active(item.href)} collapsed={collapsed} onClick={onClose} />
+            <TopItem key={item.href} {...item} isActive={active(item.href)} collapsed={collapsed} onClick={onClose} />
           ))}
         </div>
 
-        {/* ── Collapse toggle ───────────────────────────────────────── */}
+        {/* ── Collapse toggle ──────────────────────────────────────── */}
         <div className="hidden lg:flex justify-end" style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
           <button
             onClick={onToggle}
@@ -256,7 +183,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
   );
 }
 
-function NavItem({
+function TopItem({
   href, label, Icon, isActive, collapsed, onClick,
 }: {
   href: string; label: string; Icon: React.ElementType;
@@ -267,21 +194,95 @@ function NavItem({
       href={href}
       onClick={onClick}
       title={collapsed ? label : undefined}
-      className={cn('flex items-center gap-2 rounded-md transition-all duration-150', collapsed ? 'h-8 w-8 justify-center mx-auto' : 'h-8 px-2')}
+      className={cn('flex items-center gap-2.5 rounded-md transition-all duration-150', collapsed ? 'h-9 w-9 justify-center mx-auto' : 'h-9 px-2.5')}
       style={{
         background:  isActive ? 'var(--accent-dim)' : 'transparent',
-        color:       isActive ? 'var(--accent-light)' : 'var(--text-secondary)',
         textDecoration: 'none',
+        marginBottom: 2,
       }}
       onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
       onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
     >
-      <Icon size={14} strokeWidth={isActive ? 2.5 : 1.75} style={{ flexShrink: 0, color: isActive ? 'var(--accent-light)' : 'var(--text-muted)' }} />
+      <Icon size={15} strokeWidth={isActive ? 2.25 : 1.75} style={{ flexShrink: 0, color: isActive ? 'var(--accent)' : 'var(--text-muted)' }} />
       {!collapsed && (
-        <span style={{ fontSize: '0.8125rem', fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: isActive ? 600 : 500, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
           {label}
         </span>
       )}
     </Link>
+  );
+}
+
+function GroupItem({
+  label, Icon, open, setOpen, groupActive, collapsed, items, pathname, onClose, exactRoot,
+}: {
+  label: string; Icon: React.ElementType;
+  open: boolean; setOpen: (v: boolean) => void;
+  groupActive: boolean; collapsed: boolean;
+  items: { href: string; label: string }[];
+  pathname: string; onClose: () => void;
+  exactRoot?: string;
+}) {
+  if (collapsed) {
+    // Collapsed rail: the group icon links to its first destination
+    return (
+      <Link
+        href={items[0].href}
+        onClick={onClose}
+        title={label}
+        className="flex items-center justify-center h-9 w-9 mx-auto rounded-md transition-all duration-150"
+        style={{ background: groupActive ? 'var(--accent-dim)' : 'transparent', textDecoration: 'none', marginBottom: 2 }}
+      >
+        <Icon size={15} strokeWidth={groupActive ? 2.25 : 1.75} style={{ color: groupActive ? 'var(--accent)' : 'var(--text-muted)' }} />
+      </Link>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2.5 rounded-md transition-all duration-150 w-full h-9 px-2.5"
+        style={{
+          background: groupActive && !open ? 'var(--accent-dim)' : 'transparent',
+          border: 'none', cursor: 'pointer', textAlign: 'left',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = groupActive && !open ? 'var(--accent-dim)' : 'transparent'; }}
+        aria-expanded={open}
+      >
+        <Icon size={15} strokeWidth={groupActive ? 2.25 : 1.75} style={{ flexShrink: 0, color: groupActive ? 'var(--accent)' : 'var(--text-muted)' }} />
+        <span style={{ fontSize: '0.8125rem', fontWeight: groupActive ? 600 : 500, color: groupActive ? 'var(--text-primary)' : 'var(--text-secondary)', flex: 1 }}>
+          {label}
+        </span>
+        <ChevronDown
+          size={12}
+          style={{ color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+        />
+      </button>
+
+      {open && (
+        <div style={{ paddingLeft: '1.625rem', paddingTop: 2, paddingBottom: 2 }}>
+          {items.map(({ href, label: itemLabel }) => {
+            const isAct = href === exactRoot ? pathname === href : pathname === href || pathname.startsWith(href + '/');
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className="flex items-center rounded-md transition-all duration-150 h-7 px-2"
+                style={{ background: isAct ? 'var(--accent-dim)' : 'transparent', textDecoration: 'none', marginBottom: 1 }}
+                onMouseEnter={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'; }}
+                onMouseLeave={e => { if (!isAct) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              >
+                <span style={{ fontSize: '0.75rem', fontWeight: isAct ? 600 : 400, color: isAct ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                  {itemLabel}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
