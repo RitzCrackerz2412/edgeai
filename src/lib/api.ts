@@ -70,8 +70,8 @@ export async function getUpcomingGames(filters?: {
         ),
       );
       const seen = new Set<string>();
-      liveGames = rawResults.flat()
-        .map(rawGameToGame)
+      const converted = await Promise.all(rawResults.flat().map(rawGameToGame));
+      liveGames = converted
         .filter((g): g is Game => g !== null)
         .filter(g => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
     } catch {
@@ -276,7 +276,7 @@ export async function getGameById(id: string): Promise<Game | null> {
       }
     }
 
-    const game = rawGameToGame(raw);
+    const game = await rawGameToGame(raw);
     if (!game) return null;
 
     // Fetch live weather for outdoor sports when we have a venue city

@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
     );
 
     const seen = new Set<string>();
-    const games = rawResults.flat()
-      .map(rawGameToGame)
+    const converted = await Promise.all(rawResults.flat().map(rawGameToGame));
+    const games = converted
       .filter((g): g is NonNullable<typeof g> => g !== null)
       .filter(g => {
         if (seen.has(g.id)) return false;

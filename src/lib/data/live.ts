@@ -10,6 +10,8 @@ import { ALL_TEAMS } from './teams/index';
 import { resultsStore } from '../results/store';
 import { enrichTeam } from '../results/enrichTeam';
 import { analyzeMarket } from '../markets/analyzer';
+import { extractFeatures } from '../features/pipeline';
+import { ensembleModel } from '../engine/ensemble';
 
 // ── Team lookup ───────────────────────────────────────────────────────────────
 //
@@ -311,9 +313,42 @@ function buildPrediction(rawHome: Team, rawAway: Team, homeScore?: number, awayS
   };
 }
 
+// ── Ensemble override ─────────────────────────────────────────────────────────
+//
+// buildPrediction() above gives every live game a fast, always-available
+// raw-ELO baseline. For pending games we then run the full ensemble
+// (log-odds pooling, per-sport dynamic weighting, disagreement-aware
+// confidence, Davidson soccer draw model, empirical-Bayes form shrinkage,
+// vig-free market anchor — see engine/ensemble.ts) and use its verdict
+// instead. Never throws: any failure just keeps the ELO baseline.
+
+async function applyEnsemblePrediction(game: Game): Promise<void> {
+  try {
+    const features = extractFeatures(game);
+    const ens = await ensembleModel.predict(features);
+
+    // Renormalize to a two-way split so winProbability + (100 − winProbability)
+    // still sums to 100 for every surface that assumes a binary split — the
+    // draw slice (soccer) is proportionally folded back into home/away.
+    const total = ens.homeWinProbability + ens.awayWinProbability;
+    const homePct = total > 0 ? Math.round((ens.homeWinProbability / total) * 100) : 50;
+    const awayPct = 100 - homePct;
+    const winnerIsHome = homePct >= awayPct;
+
+    game.prediction.winner = winnerIsHome ? game.homeTeam.name : game.awayTeam.name;
+    game.prediction.winProbability = winnerIsHome ? homePct : awayPct;
+    game.prediction.confidence = Math.min(95, Math.max(20, Math.round(ens.confidence * 100)));
+    game.prediction.upsetProbability = Math.min(homePct, awayPct);
+    game.prediction.monteCarloWinRate = homePct;
+    game.prediction.bayesianProbability = homePct;
+  } catch {
+    // Ensemble unavailable — keep the ELO-only baseline from buildPrediction
+  }
+}
+
 // ── RawGame → Game ────────────────────────────────────────────────────────────
 
-export function rawGameToGame(raw: RawGame): Game | null {
+export async function rawGameToGame(raw: RawGame): Promise<Game | null> {
   // ESPN homeTeamId in the provider is ESPN's internal numeric ID (not abbr).
   // We match by displayName within the same sport AND league.
   const homeTeam = findTeam(raw.sport, raw.league, raw.homeTeamName);
@@ -383,7 +418,7 @@ export function rawGameToGame(raw: RawGame): Game | null {
 
   const prediction = buildPrediction(home, away, raw.homeScore, raw.awayScore, status, raw.odds ?? null, raw.leaders);
 
-  return {
+  const game: Game = {
     id: `espn-${raw.id}`,
     sport: raw.sport,
     league: raw.league,
@@ -418,6 +453,15 @@ export function rawGameToGame(raw: RawGame): Game | null {
       lastMeeting: 'N/A',
     },
   };
+
+  // Only pending/live games get the full ensemble — finished games keep
+  // their ELO-baseline prediction as the historical record of what was
+  // called, not a retroactively "improved" pick.
+  if (status !== 'Final' && status !== 'Final/OT' && status !== 'Final/SO') {
+    await applyEnsemblePrediction(game);
+  }
+
+  return game;
 }
 
 // ── ESPN player summary (lightweight) ────────────────────────────────────────
